@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enmet"
+version = "0.1.3"
+description = "Python API for Encyclopaedia Metallum (The Metal Archives) website."
+readme = "README.md"
+license = {"text" = "GPL-3.0-or-later" }
+authors = [{ "name" = "Łukasz Jakubowski" }]
+requires-python = ">=3.10"
+dependencies = [
+    "beautifulsoup4",
+    "requests",
+    "requests-cache",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: Internet",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-cov"
+]
+
+[project.urls]
+Homepage = "https://github.com/lukjak/enmet"
+Documentation = "https://github.com/lukjak/enmet/README.md"
+Repository = "https://github.com/lukjak/enmet"

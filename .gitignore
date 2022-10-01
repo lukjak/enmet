@@ -1,0 +1,7 @@
+.coverage
+.idea
+*.sqlite
+/dist
+src/*.egg-info
+.pytest_cache
+/.venv
