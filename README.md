@@ -1,21 +1,23 @@
 # Enmet - The Encyclopaedia Metallum API
 
-_Enmet_ is a programmatic API to Encyclopaedia Metallum - The Metal Archives site. It allows convenient access to specific MA data from python code. It was designed for ease of use and ease of development/maintenance.
+_Enmet_ is a programmatic API to Encyclopaedia Metallum - The Metal Archives site. It allows convenient access to specific Metal Archives data from python code. It was designed for ease of use and ease of development/maintenance.
 
 What _Enmet_ is great for:
 - Cleaning and extending tags of your CD rips/downloads collection. _Enmet_ was created, because I wanted to add some more metadata to my CD rips/downloads and found existing packages hard to use and/or hard to extend for my needs.
 - Downloading selected information for further use.
 
 What _Enmet_ is not suitable for:
-- data scraping 
-- data mining
-- using as a command line tool
-- uploading any data to MA
-- building own database of music information from scratch
+- Data scraping 
+- Data mining
+- Using as a command line tool
+- Uploading any data to MA
+- Building own database of music information from scratch
+
+Please note: _Enmet_ is a young project. Even though each release is supposed to be stable by itself, some breaking changes may occur even between minor versions. 
 
 # Quickstart
 
-_Warning, by default Enmet creates a cache file in ~/.enmet directory. Read [here](#caching) about Enmet caching._
+_Warning, by default Enmet creates a cache file in \<settings\>/.enmet directory. Read [here](#caching) about Enmet caching._
 
 ```
 import enmet
@@ -34,18 +36,18 @@ import enmet
 # User guide
 This section is intended for persons who want just to use _Enmet_.
 
-Metal Archives data are made available in _Enmet_ by objects of a few classes. Each class represents some "thing", aka "entity": band (class `Band`), artist (class `Artist`), album (class `Album`) etc. Each object presents data via its properties (which can be again entity objects or just simple data) - so that `Band.name` is a string being the a band's name and `Band.discography` is a list of `Album` objects. Each `Album` object has in turn `Album.bands` property, which is a list od `Band` objects (as an album can be a split album by multiple bands); one of these objects is the starting `Band` object. And so on and on.
+Metal Archives data are made available in _Enmet_ by objects of a few classes. Each class represents some "thing", aka "entity": band (class `Band`), artist (class `Artist`), album (class `Album`) etc. Each object presents data via its properties (which can be again entity objects or just simple data) - so that `Band.name` is a string being the a band's name and `Band.discography` is a list of `Album` objects. Each `Album` object has in turn `Album.bands` property, which is a list of `Band` objects (as an album can be a split album by multiple bands); one of these objects is the starting `Band` object. And so on and on.
 
-You can get all the available properties by calling `dir` on an object, for example `dir(Band(18))` returns `['country', 'discography', 'formed_in', 'genres', 'label', 'lineup', 'location', 'lyrical_themes', 'name', 'status', 'years_active']`.
+You can get all the available properties by calling `dir` on an object, for example `dir(Band(18))` returns `['country', 'discography', 'formed_in', 'genres', ...]`.
 
 Mind that currently only a part of data available is covered.
 
 ### Enmet objects
 
 There are 3 types of classes which present data in the same way, but differ a bit in handling:
-- EnmetEntity subclasses: they represent "native" Metal Archives objects - this means objects which have their own identifiers in Metal Archives. Examples of these subclasses are Artist, Band, Album, Track etc. All they have `id` property containing this identifier. 
-- DynamicEnmetEntity subclasses: they represent "dynamic" Metal Archives objects - they represent entities, which don't have their identities in Metal Archives and thus no identifiers. Examples of these subclasses are `Disc` and `AlbumArtist`. Creation of these subclasses was necessary to preserve natural logic when manipulating entity objects; for example name of album artist (represented by class `AlbumArtist`) stated on a physical media can be different from what appears on the artist's page in Metal Archives as name or full name.
-- ExternalEntity: objects of these class represent entities external to Metal Archives, for example non-metal artist of a collaboration album. The objects have just a single property `name`.
+- EnmetEntity subclasses: they represent "native" Metal Archives objects - this means objects which have their own identifiers in Metal Archives. Examples of these subclasses are Artist, Band, Album, Track etc. All they have `id` property containing relevant identifier. 
+- DynamicEnmetEntity subclasses: they represent "dynamic" Metal Archives objects - entities, which don't have their identities in Metal Archives and thus no identifiers. Examples of these subclasses are `Disc` and `AlbumArtist`. Creation of these subclasses was necessary to preserve natural logic when manipulating entity objects; for example name of an album artist (represented by class `AlbumArtist`) stated on a physical media can be different from what appears on the artist's page in Metal Archives as name or full name.
+- ExternalEntity: objects of these class represent entities external to Metal Archives, for example non-metal artist of a collaboration album. The objects have just a single property `name`. These entities have no own data pages in MetalArchives, they are just mentioned by name.
 
 ### Creating objects
 
@@ -53,14 +55,14 @@ There are two ways of creating the entity objects: search functions and standard
 - [Search functions](#functions) are the primary way of creating Enmet objects. They are basically a way to determine what id has a looked for entity. They return a list of relevant objects, which you can scan to find out the ones of interest. Using just names for the purpose of object creation is not feasible, as too often there are multiple matches for a given name (there are fe. 3 _Inner Sanctum_ bands from Germany).
 - All EnmetEntity objects can be also created by hand and most of the time all you need for this purpose is a relevant id. For example `Band("138")` gives you the same object as `search_bands(name="megadeth")[0]`.
    - Once you search for entities and get their ids, you can persist them between your code runs to speed up work the next time. 
-   - Sometimes id is not sufficient, for example in the case of `Track` objects. The reason is that there is no web resources for them on Metal Archives site to query, and getting all the required details dynamically could be costly. However, there should be no need to create these objects manually.
+   - Sometimes id is not sufficient, for example in the case of `Track` objects. The reason is that there is no web resources for them to query on Metal Archives site, and getting all the properties dynamically could be costly. However, there should be no need to create these objects manually.
 - You should have no need to create manually either `DynamicEnmetEntity` or `ExternalEntity` objects. They are created in the background dynamically when needed.
 
 ## Caching
 
 ### Web caching
 
-Working with a web site is costly in terms of time - fetching each page takes significant amount of time. Thus _Enmet_ uses on-disk cache to keep and reuse data pages downloaded from Metal Archives site. The next time a page is needed, it is picked up from the local cache file instead of getting it from the web.
+Working with a web site is costly in terms of time - fetching each page takes significant amount of time. Thus _Enmet_ uses on-disk cache to keep and reuse data pages downloaded from Metal Archives. The next time a page is needed, it is picked up from the local cache file instead of getting it from the web.
 
 Searches, which also involve requesting data from Metal Archives, at NOT cached - each search fetches a new result. 
 
@@ -72,11 +74,11 @@ There is no feature to disable session caching.
 
 ### Object caching
 
-When using Enmet, some entities may appear in many objects. For example each album of a band refers to this band and each track refers to a band that performs it. In order to optimize memory usage, some objects are reused when there is an attempt to create another object for the same entity while object for this entity already exists. This code sample prints out `True`:
+When using Enmet, some entities may appear in many objects. For example each album of a band refers to this band and each track refers to a band that performs it. In order to optimize memory usage, some objects are reused when there is an attempt to create another object for the same entity while an object for this entity already exists. This code sample prints out `True`:
 
 ```python
 
-from src.enmet import enmet
+import enmet
 
 megadeth = enmet.search_bands(name="Megadeth")[0]
 megadeth2 = enmet.Band(138)
