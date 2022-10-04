@@ -4,9 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "enmet"
-version = "0.1.4"
+version = "0.1.6"
 description = "Python API for Encyclopaedia Metallum (The Metal Archives) website."
-readme = {text = "Enmet is a programmatic API to Encyclopaedia Metallum - The Metal Archives site. It allows convenient access to specific Metal Archives data from python code. It was designed for ease of use and ease of development/maintenance.", content-type = "text/plain"}
+readme = {text = """
+Enmet is a programmatic API to Encyclopaedia Metallum - The Metal Archives site. It allows convenient access to Metal Archives data from python code.
+
+Enmet is designed for ease of use and ease of development and maintenance.
+
+See Documentation link for full documentation. Sample usage:
+```python
+>>> import enmet
+>>> megadeth = enmet.search_bands(name="Megadeth")[0]
+>>> print(megadeth.discography)  # (output truncated)
+[<Album: Last Rites (4250)>, <Album: Killing Is My Business... and Business Is Good! (659)>, ...]
+>>> print(megadeth.discography[0].discs[0].tracks)
+[<Track: Last Rites / Loved to Deth (38701A)>, <Track: Mechanix (38702A)>, <Track: The Skull Beneath the Skin (38703A)>]
+>>> print(megadeth.lineup)
+[<LineupArtist: Dave Mustaine (184)>, <LineupArtist: James LoMenzo (2836)>, <LineupArtist: Kiko Loureiro (3826)>, <LineupArtist: Dirk Verbeuren (1391)>]
+>>> print([artist.name for artist in megadeth.lineup])
+['Dave Mustaine', 'James LoMenzo', 'Kiko Loureiro', 'Dirk Verbeuren']
+```""", content-type = "text/markdown"}
 license = {text = "GPL-3.0-or-later" }
 authors = [{name = "Łukasz Jakubowski" }]
 requires-python = ">=3.10"
@@ -29,6 +46,5 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/lukjak/enmet"
-Documentation = "https://github.com/lukjak/enmet/README.md"
+Documentation = "https://github.com/lukjak/enmet/blob/master/README.md"
 Repository = "https://github.com/lukjak/enmet"

@@ -1,6 +1,6 @@
 # Enmet - The Encyclopaedia Metallum API
 
-_Enmet_ is a programmatic API to Encyclopaedia Metallum - The Metal Archives site. It allows convenient access to specific Metal Archives data from python code. It was designed for ease of use and ease of development/maintenance.
+_Enmet_ is a programmatic API to Encyclopaedia Metallum - The Metal Archives site. It allows convenient access to specific Metal Archives data from python code. It is designed for ease of use and ease of development and maintenance.
 
 What _Enmet_ is great for:
 - Cleaning and extending tags of your CD rips/downloads collection. _Enmet_ was created, because I wanted to add some more metadata to my CD rips/downloads and found existing packages hard to use and/or hard to extend for my needs.
@@ -20,8 +20,7 @@ Please note: _Enmet_ is a young project. Even though each release is supposed to
 _Warning, by default Enmet creates a cache file in \<settings\>/.enmet directory. Read [here](#caching) about Enmet caching._
 
 ```
-import enmet
-
+>>>import enmet
 >>> megadeth = enmet.search_bands(name="Megadeth")[0]  # Search bands named "Megadeth" and pick the first one
 >>> print(megadeth.discography)  # List discography (output truncated)
 [<Album: Last Rites (4250)>, <Album: Killing Is My Business... and Business Is Good! (659)>, ...]
@@ -74,7 +73,7 @@ There is no feature to disable session caching.
 
 ### Object caching
 
-When using Enmet, some entities may appear in many objects. For example each album of a band refers to this band and each track refers to a band that performs it. In order to optimize memory usage, some objects are reused when there is an attempt to create another object for the same entity while an object for this entity already exists. This code sample prints out `True`:
+When using Enmet, some entities may appear in many objects. For example each album of a band refers to this band and each track refers to a band that performs it. In order to optimize memory usage, some objects are reused when there is an attempt to create another object for the same entity when an object for this entity already exists. This code sample prints out `True`:
 
 ```python
 
@@ -175,7 +174,7 @@ Note: any optional parameters in constructors that provide values related to an 
 - `search_albums(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None, year_from: int = None, month_from: int = None, year_to: int = None, month_to: int = None, genre: str = None, release_types: List[ReleaseTypes] = None)`.
 
 ### Enums
-- `Countries`. This is a dynamic enum with available countries. It is created on the fly from `country-list` package.
+- `Countries`. This is a dynamic enum with available countries.
 - `ReleaseTypes`. This is an enum keeping available release (album) types.
 
 ### Helper classes
@@ -184,16 +183,16 @@ Note: any optional parameters in constructors that provide values related to an 
 # Developer guide
 This section is intended for persons who want to contribute to _Enmet_. As _Enmet_ code is pretty straightforward, it just explains designs and concepts. 
 
-Two extreme approaches to Metal Archives (MA) API could be just providing text values for elements found on MA pages and building complete data model for all the MA data, loading data into it and exposing the data via some query language.  
+Two extreme approaches to The Metal Archives API could be just providing text values for elements found on Metal Archives pages _and_ building complete data model for all the Metal Archives data, loading data into it and exposing the data via some query language.  
 
-_Enmet_ is somewhere in the middle: there is object model available, but it doesn't try to cover all the MA data (at least for now) or stick to MA model acccurately, and data are exposed via static properties.
+_Enmet_ is somewhere in the middle: there is object model available, but it doesn't try to cover all the data (at least for now) or stick to Metal Archives model acccurately, and data are exposed via static properties.
 
 ### Objects
 
 There are two object layers used:
 1. Subclasses of class `Page` represent responses to HTTP requests sent to Metal Archives. They expose data from the responses via properties. The extracted data are "raw" data, ie. only built-in python types with minimal cleanup. RESOURCE attribute in `Page` classes determines resource to query and it is None in abstract classes. 
     1. Subclasses of `SearchResultPage(Page)` represent responses to search HTTP requests. They have a single property that returns a list, where each list element is a tuple of simple data pertaining to a single found entity (`List[Tuple[str, ...]]`) - for example a list where each element is (band name, band country, formation year) tuple. These subclasses process JSON returned by requests sent to search resources.
-    2. Subclasses of `DataPage(Page)` represent responses to entity HTTP requests. Sometimes a `DataPage` subclass represents just what can be seen in a browser for an entity, but most of the time there is no 1:1 correspondence between what a user sees in a browser and some `DataPage` subclass. These subclasses have multiple properties that make available different pieces of data found on the corresponding webpages. `_CachedSite` descriptor in `_DataPage` class returns BeautifulSoup objects for requests, thus data extraction is `_DataPage` subclasses is done with CSS selectors. 
+    2. Subclasses of `DataPage(Page)` represent responses to entity HTTP requests. Sometimes a `DataPage` subclass represents just what can be seen in a browser for an entity, but most of the time there is no 1:1 correspondence between what a user sees in a browser and some `DataPage` subclass. These subclasses have multiple properties that make available different pieces of data found on the corresponding webpages. `_CachedSite` descriptor in `_DataPage` class returns BeautifulSoup objects for requests, thus data extraction in `_DataPage` subclasses is done with CSS selectors. 
 2. Concrete subclassess of `Entity` class represent items like band, album or track. They use `DataPage` objects and other `Entity` objects to present full entity via properties. There are 3 types of `Entity` subclasses:
    1. Class `ExternalEntity` represents entity from outside of The Metal Archives (without MA id), like non-metal musician without MA page participating in a release. This class has single property `name`, which provides simple textual information about the entity.
    2. Class `EnmetEntity` represents Metal Archives entity which has its own id (like band).
@@ -207,12 +206,18 @@ This is a design choice aimed at balancing performance and code clarity, while a
 
 Working with Metal Archives can involve many HTTP requests and creation of large number of objects which often describe the same entity (for example each track has a property which determines the band it is performed by).
 
-To mitigate negative effects of these factors and to improve general responsiveness, there are following methods applied (_mind that no related tests have been done, there is just some common sense applied_ ):
-- HTTP session cache in `_CachedSite` class using `requests-cache` package. This on-disk cache stores responses obtained from Metal Archives servers for `DataPages` objects. Read more [here](https://requests-cache.readthedocs.io/en/stable/).
+To mitigate negative effects of these factors and to improve general responsiveness, there are following methods applied (_mind that no related tests have been done, there is just some common sense applied_):
+- HTTP session cache in `_CachedSite` class from `requests-cache` package. This on-disk cache stores responses obtained from Metal Archives servers for `DataPages` objects. Read more [here](https://requests-cache.readthedocs.io/en/stable/).
 - BeautifulSoup objects cache in `_CachedSite` class using `@lru_cache`. This fixed-size (`_BS_CACHE_SIZE`) cache keeps BeautifulSoup objects created from HTTP response pages. It is supposed to increase performance when multiple properties of a set of objects are accessed.
-- Deduplication of `DataPage` and `EnmetEntity` objects using `CachedInstance` mixin class. Only one instance of relevant object is created and then re-used when there is attempt to create an object referring to the same page or entity. In this way fe. all `Album` objects in a band's discography can refer to the same `Band` object.
+- Deduplication of `DataPage` and `EnmetEntity` objects using `_CachedInstance` mixin class. Only one instance of relevant object is created and then re-used when there is attempt to create an object referring to the same page or entity. In this way fe. all `Album` objects in a band's discography can refer to the same `Band` object.
 
 
 ### Unit tests
 
-`test_enmet.py` uses pytest and pytest-mock to do some testing. Part of tests actually connects to Metal Archives, so they are not quite unit tests. They are not very clean, but cover the code nicely. 
+`test_enmet.py` uses pytest and pytest-mock to do some testing. Part of tests actually connects to Metal Archives, so they are not quite unit tests. They are not very clean, but cover the code nicely.
+
+# ToDo items
+
+- Add cardinality one properties (album.tracks, album.band etc) with corresponding exception system.
+- Add enums where relevant (band.status, genres - ?)
+- Make more data available
