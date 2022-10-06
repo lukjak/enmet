@@ -19,8 +19,8 @@ Please note: _Enmet_ is a young project. Even though each release is supposed to
 
 _Warning, by default Enmet creates a cache file in \<settings\>/.enmet directory. Read [here](#caching) about Enmet caching._
 
-```
->>>import enmet
+```python
+>>> import enmet
 >>> megadeth = enmet.search_bands(name="Megadeth")[0]  # Search bands named "Megadeth" and pick the first one
 >>> print(megadeth.discography)  # List discography (output truncated)
 [<Album: Last Rites (4250)>, <Album: Killing Is My Business... and Business Is Good! (659)>, ...]
