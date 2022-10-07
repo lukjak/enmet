@@ -170,8 +170,20 @@ Note: any optional parameters in constructors that provide values related to an 
     - If you provide no parameters, you will get the default cache object.
     - Providing any set of parameters excluding both `cache_name` and `backend` allows to use the default cache with modified parameters.
     - You can change cache at any moment. If you change cache before any other _Enmet_ usage, the default cache will not get created.
-- `search_bands(*, name: str = None, strict: bool = True, genre: str = None, countries: List[Countries] = None, formed_from: int = None, formed_to: int = None) -> List[Band]`.
-- `search_albums(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None, year_from: int = None, month_from: int = None, year_to: int = None, month_to: int = None, genre: str = None, release_types: List[ReleaseTypes] = None)`.
+- `search_bands(*, name: str = None, strict: bool = True, genre: str = None, countries: List[Countries] = None, formed_from: int = None, formed_to: int = None) -> List[Band]`. This function searches for bands, returning a list of `Band` objects. Parameters:
+  - `name` - band name
+  - `strict` - force strict matching for `name` (case-insensitive)
+  - `genre` - genre name (substring matching)
+  - `countries` - list of Countries enum members
+  - `formed_from` and `formed_to` - year range for band formation
+- `search_albums(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None, year_from: int = None, month_from: int = None, year_to: int = None, month_to: int = None, genre: str = None, release_types: List[ReleaseTypes] = None)`. This function searches for albums, returning a list of `Album` objects. Parameters:
+  - `name` - album name
+  - `strict` - force strict matching for `name` (case-insensitive)
+  - `band` - name of a band performing the album
+  - `band_strict` - force strict matching for `band_name` (case-insensitive)
+  - `year_from`, `month_from`, `year_to`, `month_to` - time range for album release date
+  - `genre` - genre name (substring matching)
+  - `release_types` - list of ReleaseType enum members
 
 ### Enums
 - `Countries`. This is a dynamic enum with available countries.
