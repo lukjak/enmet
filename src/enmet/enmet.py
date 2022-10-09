@@ -9,7 +9,7 @@ from inspect import getmembers
 from os.path import expandvars, expanduser
 from pathlib import PurePath, Path
 from time import sleep
-from typing import List, Optional, Tuple, Union, Iterable
+from typing import List, Optional, Tuple, Union, Iterable, Type
 from urllib.parse import urljoin, urlparse
 from weakref import WeakValueDictionary
 
@@ -414,7 +414,7 @@ class _AlbumPage(_DataPage):
         return [e.text for e in self.enmet.select(".discRow td")] or [None]
 
     @cached_property
-    def total_times(self):
+    def total_times(self) -> List[Optional[str]]:
         return [e.text for e in self.enmet.select(".table_lyrics strong")] or [None]
 
     @cached_property
@@ -438,6 +438,65 @@ class _ArtistPage(_DataPage):
     @cached_property
     def real_full_name(self):
         return self._get_header_item("Real/full name:").text.strip()
+
+    @cached_property
+    def age(self) -> str:
+        return self._get_header_item("Age:").text.strip()
+
+    @cached_property
+    def place_of_birth(self) -> str:
+        return self._get_header_item("Place of birth:").text.strip()
+
+    @cached_property
+    def gender(self) -> str:
+        return self._get_header_item("Gender:").text
+
+    def _get_extended_section(self, caption: str, cls_data_source: Type[_DataPage]) -> Optional[str]:
+        # This is a mess because the HTML for this section is a mess...
+        if top := self.enmet.select_one("#member_content .band_comment"):
+            if caption_elem := top.find("h2", string=caption):
+                idx_caption = top.index(caption_elem)
+                has_readme = False
+                idx=0
+                for idx, elem in enumerate(top.contents[idx_caption+1:]):
+                    if not isinstance(elem, Tag):
+                        continue
+                    elif elem.text == "Read more":
+                        has_readme = True
+                        break
+                    elif elem.name == "h2":
+                        break
+                else:
+                    idx += 1
+                if has_readme:
+                    return getattr(cls_data_source(self.id), caption.lower())
+                else:
+                    return " ".join([e.text for e in top.contents[idx_caption+1:idx_caption+1+idx]])
+        return None
+
+    @cached_property
+    def biography(self) -> Optional[str]:
+        return self._get_extended_section("Biography", _ArtistBiographyPage)
+
+    @cached_property
+    def trivia(self) -> Optional[str]:
+        return self._get_extended_section("Trivia", _ArtistTriviaPage)
+
+
+class _ArtistBiographyPage(_DataPage):
+    RESOURCE = "artist/read-more/id/{}"
+
+    @cached_property
+    def biography(self) -> str:
+        return self.enmet.text
+
+
+class _ArtistTriviaPage(_DataPage):
+    RESOURCE = "artist/read-more/id/{}/field/trivia"
+
+    @cached_property
+    def trivia(self) -> str:
+        return self.enmet.text
 
 
 class _LyricsPage(_DataPage):
@@ -710,6 +769,26 @@ class Artist(EnmetEntity):
     @cached_property
     def real_full_name(self) -> str:
         return self._artist_page.real_full_name
+
+    @cached_property
+    def age(self) -> str:
+        return self._artist_page.age
+
+    @cached_property
+    def place_of_birth(self) -> str:
+        return self._artist_page.place_of_birth
+
+    @cached_property
+    def gender(self) -> str:
+        return self._artist_page.gender
+
+    @cached_property
+    def biography(self) -> str:
+        return self._artist_page.biography
+
+    @cached_property
+    def trivia(self) -> str:
+        return self._artist_page.trivia
 
 
 class EntityArtist(DynamicEnmetEntity, ABC):

@@ -121,6 +121,12 @@ Note: any optional parameters in constructors that provide values related to an 
   - Attributes and properties:
     - `id: str` - identifier
     - `name(self) -> str`
+    - `real_full_name(self) -> str`
+    - `age(self) -> str`
+    - `place_of_birth(self) -> str`
+    - `gender(self) -> str`
+    - `biography(self) -> str`
+    - `trivia(self) -> str`
 - `Band(EnmetEntity)`. This class represents a band.
   - `__init__(self, id_: str, *, name: str = None, country: Countries = None)`. `id_` is the band's identifier in Metal Archives. `name` is the band's name as stated on the band's page. `country` is the band's country of origin.
   - Attributes and properties:
