@@ -141,6 +141,7 @@ Note: any optional parameters in constructors that provide values related to an 
     - `label(self) -> str` (current or last known)
     - `lineup(self) -> List["LineupArtist"]` (current or last known)
     - `discography(self) -> List["Album"]`
+    - `similar_artists(self) -> List["SimilarBand"]` (Note: There is naming inconseqence here on Metal Archives page - this list refers to bands, not artists, ie. persons. Property name follows Metal Archives wording, but otherwise the notion of "band" is used.)
 - `Disc(DynamicEnmetEntity)`. This class represents a disc of an album. More precisely, it is a container which holds some or all tracks of the album. Except for a CD, it can be in fact a physical cassette, VHS, DVD or even arbitrary partition in case of electronic releases - whatever Metal Archives considers a "disc". 
   - `__init__(self, album_id: str, number: int = 0, bands: List[Band] = None)`. `album_id` is id of an album the disc belongs to. `number` is ordinal number of the disc on the album (counted from 0). `bands` is a list of bands that perform tracks on the disc.
   - Attributes and properties:
@@ -159,6 +160,13 @@ Note: any optional parameters in constructors that provide values related to an 
     - `band: Band` - the band object
     - `role: str` - a role that artist has in the lineup.
     - all remaining attributes and properties are identical as for `Artist`.
+- `SimilarBand(DynamicEnmetEntity)`. This class represents a band in _Similar artists_ tab on another band's page.
+  - `__init__(self, id_: str, similar_to_id: str, score: str, name: str = None, country: str = None, genres: str = None)`. `id_` is the band's identifier. `similar_to_id` is the id of a band which the given band is similar to. `score` is similarity score (number of user votes). `name` is the band's name. `country` is the band's country. `genres` is the band's genres.
+  - Attributes and properties:
+    - `band: Band` - the band object
+    - `similar_to: Band` - the band given band is similar to
+    - `score: int` - similarity score.
+    - all remaining attributes and properties are identical as for `Band`.
 - `Track(EnmetEntity)`. This class represents a track on an album. It's a bit different than the other EnmetEntity classes, as tracks don't have their own resources (pages) in Metal Archives.
   - `__init__(self, id_, bands: List[Band], number: int = None, name: str = None, time: timedelta = None, lyrics_info: Optional[bool] = None)`. `id_` a track's identifier. `bands` is a list of bands performing on the `Disc` which the track belongs to. `number` is the track's number on the disc (counter from 1). `name` is the track's name. `time` is the track's duration. `lyrics_info` is lyrics availability status (`None` if there is no information, `True` if a link to the lyrics is available, `False` it the track is marked as _instrumental_).
   - Attributes and properties:

@@ -223,9 +223,10 @@ class _CachedSite:
         return session
 
     @lru_cache(maxsize=_BS_CACHE_SIZE)
-    def _cached_get(self, resource: str) -> BeautifulSoup:
+    def _cached_get(self, resource: str, params: Optional[Tuple[Tuple]]) -> BeautifulSoup:
         """Get page from Metal Archives with caching."""
         response = self._session.get(urljoin(_METALLUM_URL, resource),
+                                     params=params,
                                      headers={"User-Agent": _USER_AGENT, 'Accept-Encoding': 'gzip'}
                                      )
         response.raise_for_status()
@@ -239,7 +240,8 @@ class _CachedSite:
             self._CACHE_PATH.mkdir(parents=True, exist_ok=True)
             self.set_session()
         resource = instance.RESOURCE.format(instance.id)
-        return self._cached_get(resource)
+        params = getattr(instance, "PARAMS", None)
+        return self._cached_get(resource, params)
 
 
 class _DataPage(_Page, _CachedInstance, ABC):
@@ -336,6 +338,23 @@ class _BandPage(_DataPage):
             # Role
             result[-1].append(elem.select_one("td:nth-child(2)").text.replace("\n", " ").replace("\xa0", " ").strip())
         return result
+
+
+class _BandRecommendationsPage(_DataPage):
+    RESOURCE = "band/ajax-recommendations/id/{}?showMoreSimilar=1"
+    PARAMS = (("showMoreSimilar", 1),)
+
+    @cached_property
+    def similar_artists(self) -> List[List[str]]:
+        rows = self.enmet.select("#artist_list tr:not(:last-child)")
+        results = []
+        for row in rows:
+            data = row.select("td")
+            results.append([data[0].select_one("a")["href"], data[0].text])  # Band URL, band name
+            results[-1].append(data[1].text)  # Country
+            results[-1].append(data[2].text)  # Genre
+            results[-1].append(data[3].text)  # Score
+        return results
 
 
 class _AlbumPage(_DataPage):
@@ -550,13 +569,15 @@ class DynamicEnmetEntity(Entity, ABC):
 
 class Band(EnmetEntity):
     """Band or artist performing as a band."""
-    def __init__(self, id_: str, *, name: str = None, country: str = None):
+    def __init__(self, id_: str, *, name: str = None, country: str = None, genres: str = None):
         if not hasattr(self, "id"):
             super().__init__(id_)
             if name is not None:
                 setattr(self, "name", name)
             if country is not None:
                 setattr(self, "country", Countries[country_to_enum_name(country)])
+            if genres is not None:
+                setattr(self, "genres", genres)
             self._band_page = _BandPage(self.id)
             self._albums_page = _DiscographyPage(self.id)
 
@@ -608,6 +629,27 @@ class Band(EnmetEntity):
     def discography(self) -> List["Album"]:
         """List of band's albums in chronological order."""
         return [Album(_url_to_id(a[0]), name=a[1], year=a[3]) for a in self._albums_page.albums]
+
+    @cached_property
+    def similar_artists(self) -> List["SimilarBand"]:
+        return [SimilarBand(_url_to_id(sa[0]), self.id, sa[4], name=sa[1], country=sa[2], genres=sa[3])
+                for sa in _BandRecommendationsPage(self.id).similar_artists]
+
+
+class SimilarBand(DynamicEnmetEntity):
+    def __init__(self, id_: str, similar_to_id: str, score: str, name: str = None, country: str = None, genres: str = None):
+        self.band = Band(id_, name=name, country=country, genres=genres)
+        self.similar_to = Band(similar_to_id)
+        self.score = int(score)
+
+    def __dir__(self) -> List[str]:
+        return dir(self.band) + ["score", "similar_to"]
+
+    def __getattr__(self, item):
+        return getattr(self.band, item)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {self.band.name} ({self.score})>"
 
 
 class Album(EnmetEntity):
