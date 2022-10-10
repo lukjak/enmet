@@ -488,9 +488,9 @@ class _ArtistPage(_DataPage):
                 else:
                     idx += 1
                 if has_readme:
-                    return getattr(cls_data_source(self.id), caption.lower())
+                    return getattr(cls_data_source(self.id), caption.lower()).strip()
                 else:
-                    return " ".join([e.text for e in top.contents[idx_caption+1:idx_caption+1+idx]])
+                    return " ".join([e.text.strip() for e in top.contents[idx_caption+1:idx_caption+1+idx]])
         return None
 
     @cached_property
