@@ -36,10 +36,35 @@ def test_band():
     assert Artist(184) is band.lineup[0].artist
     assert band.lineup[0].artist.real_full_name == "David Scott Mustaine"
     assert str(band.lineup[0].artist) == "Dave Mustaine"
+    assert all(x in dir(band.lineup[0]) for x in ["name_in_lineup", "band"])
     assert band.discography[0].release_date == PartialDate(year=1984, month="March", day=9)
-    assert dir(band) == ['country', 'discography', 'formed_in', 'genres', 'label', 'lineup', 'location',
-                         'lyrical_themes', 'name', 'status', 'years_active']
-    assert dir(band.lineup[0]) == ['band', 'name', 'name_in_lineup', 'real_full_name', 'role']
+    assert set(dir(band)) == {'country', 'discography', 'formed_in', 'genres', 'label', 'lineup', 'location',
+                         'lyrical_themes', 'name', 'similar_artists', 'status', 'years_active'}
+    assert len(band.similar_artists) > 180
+    assert band.similar_artists[0].score > 490
+    assert band.similar_artists[0].similar_to is band
+    assert band.similar_artists[0].name == "Metallica"
+    assert "Metallica" in repr(band.similar_artists[0])
+
+
+def test_artist():
+    # given
+    a = Artist(184)
+    # then
+    assert "1961" in a.age
+    assert a.place_of_birth == 'United States (La Mesa, California)'
+    assert a.gender == "Male"
+    assert a.biography.startswith("Mustaine was born in La Mesa")
+    assert a.trivia.startswith("Dave performed alongside Dream Theater")
+    assert set(dir(a)) == {'age', 'biography', 'gender', 'name', 'place_of_birth', 'real_full_name', 'trivia'}
+
+
+def test_artist_less_extras():
+    # given
+    a = Artist(14883)
+    # then
+    assert a.trivia.startswith("DiSanto was arrested")
+    assert a.biography is None
 
 
 def test_band_splitup():
@@ -54,6 +79,13 @@ def test_search_bands_set_country(mocker):
     search_bands(name="dummy", countries=[Countries.POLAND])
     # then
     assert asp_mock.mock_calls[0] == call({'bandName': 'dummy', 'country[]': ['PL']})
+
+
+def test_search_bands_no_params():
+    # when
+    bands = search_bands()
+    # then
+    assert bands == []
 
 
 def test_album():
@@ -73,12 +105,13 @@ def test_album():
     assert album.year == 1985
     assert dir(album) == ['bands', 'catalog_id', 'discs', 'format', 'label', 'lineup', 'name', 'release_date',
                           'reviews', 'total_time', 'type', 'year']
-    assert dir(album.lineup[0]) == ['album', 'name', 'name_on_album', 'real_full_name', 'role']
+    assert set(dir(album.lineup[0])) == {'album', 'name', 'name_on_album', 'real_full_name', 'role', 'age', 'biography',
+                                         'gender', 'place_of_birth', 'trivia'}
     assert dir(album.discs[0]) == ['name', 'number', 'total_time', 'tracks']
     assert dir(album.discs[0].tracks[0]) == ['band', 'lyrics', 'name', 'number', 'time']
 
 
-def test_search_album_with_years(mocker):
+def test_search_albums_with_years(mocker):
     # given
     asp_mock = mocker.patch("src.enmet.enmet._AlbumSearchPage")
     # when
@@ -87,8 +120,17 @@ def test_search_album_with_years(mocker):
     assert asp_mock.mock_calls[0] == call({'releaseTitle': 'dummy', 'releaseYearFrom': 1991, 'releaseYearTo': 1992, 'releaseType[]': []})
 
 
+def test_search_albums_no_params():
+    # when
+    albums = search_albums()
+    # then
+    assert albums == []
+
+
 def test_album_missing_values():
+    # given
     album = Album("3509")
+    # then
     assert album.name == "World War III"
     assert album.discs[0].tracks[2].name == "Vindicator"
     assert album.discs[0].tracks[2].time is None

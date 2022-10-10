@@ -9,7 +9,7 @@ from inspect import getmembers
 from os.path import expandvars, expanduser
 from pathlib import PurePath, Path
 from time import sleep
-from typing import List, Optional, Tuple, Union, Iterable
+from typing import List, Optional, Tuple, Union, Iterable, Type
 from urllib.parse import urljoin, urlparse
 from weakref import WeakValueDictionary
 
@@ -23,13 +23,14 @@ APPNAME = "enmet"
 
 _logger = logging.getLogger(APPNAME)
 
-__all__ = ["PartialDate", "ReleaseTypes", "set_session_cache", "Entity", "ExternalEntity", "EnmetEntity", "DynamicEnmetEntity",
-           "Band", "Album", "Disc", "Track", "Artist", "EntityArtist", "LineupArtist", "AlbumArtist", "search_bands",
-           "search_albums"]
+__all__ = ["PartialDate", "ReleaseTypes", "set_session_cache", "Entity", "ExternalEntity", "EnmetEntity",
+           "DynamicEnmetEntity", "Band", "Album", "Disc", "Track", "Artist", "EntityArtist", "LineupArtist",
+           "AlbumArtist", "search_bands", "search_albums", "SimilarBand"]
 
 _METALLUM_URL = "https://www.metal-archives.com"
 # Without correct user-agent there are 4xx responses
-_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.167 Safari/537.36"
+_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)" \
+              "Chrome/102.0.5005.167 Safari/537.36"
 
 
 def _url_to_id(url: str) -> str:
@@ -64,7 +65,8 @@ class PartialDate:
         return f"<{self.__class__.__name__}: year={self.year}, month={self.month}, day={self.day}>"
 
     def __str__(self):
-        return f"{self.year}{'' if self.month is None else '-{:02}'.format(self.month)}{'' if self.day is None else '-{:02}'.format(self.day)}"
+        return f"{self.year}{'' if self.month is None else '-{:02}'.format(self.month)}" \
+               f"{'' if self.day is None else '-{:02}'.format(self.day)}"
 
     def __eq__(self, other):
         return self.year == other.year and self.month == other.month and self.day == other.day
@@ -216,16 +218,18 @@ class _CachedSite:
 
     def set_session(self, **kwargs) -> CachedSession:
         """Factory method for CachedSession with delay hook."""
-        session = CachedSession(**({"cache_name": str(self._CACHE_PATH / self._CACHE_NAME), "backend": "sqlite"} | kwargs))
+        session = CachedSession(
+            **({"cache_name": str(self._CACHE_PATH / self._CACHE_NAME), "backend": "sqlite"} | kwargs))
         session.hooks['response'].append(
             lambda r, *args, **kwargs: None if not getattr(r, "from_cache", False) and sleep(1 / _CachedSite.QUERY_RATE) else None)
         self._session = session
         return session
 
     @lru_cache(maxsize=_BS_CACHE_SIZE)
-    def _cached_get(self, resource: str) -> BeautifulSoup:
+    def _cached_get(self, resource: str, params: Optional[Tuple[Tuple]]) -> BeautifulSoup:
         """Get page from Metal Archives with caching."""
         response = self._session.get(urljoin(_METALLUM_URL, resource),
+                                     params=params,
                                      headers={"User-Agent": _USER_AGENT, 'Accept-Encoding': 'gzip'}
                                      )
         response.raise_for_status()
@@ -239,7 +243,8 @@ class _CachedSite:
             self._CACHE_PATH.mkdir(parents=True, exist_ok=True)
             self.set_session()
         resource = instance.RESOURCE.format(instance.id)
-        return self._cached_get(resource)
+        params = getattr(instance, "PARAMS", None)
+        return self._cached_get(resource, params)
 
 
 class _DataPage(_Page, _CachedInstance, ABC):
@@ -338,6 +343,23 @@ class _BandPage(_DataPage):
         return result
 
 
+class _BandRecommendationsPage(_DataPage):
+    RESOURCE = "band/ajax-recommendations/id/{}?showMoreSimilar=1"
+    PARAMS = (("showMoreSimilar", 1),)
+
+    @cached_property
+    def similar_artists(self) -> List[List[str]]:
+        rows = self.enmet.select("#artist_list tr:not(:last-child)")
+        results = []
+        for row in rows:
+            data = row.select("td")
+            results.append([data[0].select_one("a")["href"], data[0].text])  # Band URL, band name
+            results[-1].append(data[1].text)  # Country
+            results[-1].append(data[2].text)  # Genre
+            results[-1].append(data[3].text)  # Score
+        return results
+
+
 class _AlbumPage(_DataPage):
     RESOURCE = "albums/_/_/{}"
 
@@ -414,7 +436,7 @@ class _AlbumPage(_DataPage):
         return [e.text for e in self.enmet.select(".discRow td")] or [None]
 
     @cached_property
-    def total_times(self):
+    def total_times(self) -> List[Optional[str]]:
         return [e.text for e in self.enmet.select(".table_lyrics strong")] or [None]
 
     @cached_property
@@ -438,6 +460,65 @@ class _ArtistPage(_DataPage):
     @cached_property
     def real_full_name(self):
         return self._get_header_item("Real/full name:").text.strip()
+
+    @cached_property
+    def age(self) -> str:
+        return self._get_header_item("Age:").text.strip()
+
+    @cached_property
+    def place_of_birth(self) -> str:
+        return self._get_header_item("Place of birth:").text.strip()
+
+    @cached_property
+    def gender(self) -> str:
+        return self._get_header_item("Gender:").text
+
+    def _get_extended_section(self, caption: str, cls_data_source: Type[_DataPage]) -> Optional[str]:
+        # This is a mess because the HTML for this section is a mess...
+        if top := self.enmet.select_one("#member_content .band_comment"):
+            if caption_elem := top.find("h2", string=caption):
+                idx_caption = top.index(caption_elem)
+                has_readme = False
+                idx = 0
+                for idx, elem in enumerate(top.contents[idx_caption+1:]):
+                    if not isinstance(elem, Tag):
+                        continue
+                    elif elem.text == "Read more":
+                        has_readme = True
+                        break
+                    elif elem.name == "h2":
+                        break
+                else:
+                    idx += 1
+                if has_readme:
+                    return getattr(cls_data_source(self.id), caption.lower()).strip()
+                else:
+                    return " ".join([e.text.strip() for e in top.contents[idx_caption+1:idx_caption+1+idx]])
+        return None
+
+    @cached_property
+    def biography(self) -> Optional[str]:
+        return self._get_extended_section("Biography", _ArtistBiographyPage)
+
+    @cached_property
+    def trivia(self) -> Optional[str]:
+        return self._get_extended_section("Trivia", _ArtistTriviaPage)
+
+
+class _ArtistBiographyPage(_DataPage):
+    RESOURCE = "artist/read-more/id/{}"
+
+    @cached_property
+    def biography(self) -> str:
+        return self.enmet.text
+
+
+class _ArtistTriviaPage(_DataPage):
+    RESOURCE = "artist/read-more/id/{}/field/trivia"
+
+    @cached_property
+    def trivia(self) -> str:
+        return self.enmet.text
 
 
 class _LyricsPage(_DataPage):
@@ -491,13 +572,15 @@ class DynamicEnmetEntity(Entity, ABC):
 
 class Band(EnmetEntity):
     """Band or artist performing as a band."""
-    def __init__(self, id_: str, *, name: str = None, country: str = None):
+    def __init__(self, id_: str, *, name: str = None, country: str = None, genres: str = None):
         if not hasattr(self, "id"):
             super().__init__(id_)
             if name is not None:
                 setattr(self, "name", name)
             if country is not None:
                 setattr(self, "country", Countries[country_to_enum_name(country)])
+            if genres is not None:
+                setattr(self, "genres", genres)
             self._band_page = _BandPage(self.id)
             self._albums_page = _DiscographyPage(self.id)
 
@@ -549,6 +632,28 @@ class Band(EnmetEntity):
     def discography(self) -> List["Album"]:
         """List of band's albums in chronological order."""
         return [Album(_url_to_id(a[0]), name=a[1], year=a[3]) for a in self._albums_page.albums]
+
+    @cached_property
+    def similar_artists(self) -> List["SimilarBand"]:
+        return [SimilarBand(_url_to_id(sa[0]), self.id, sa[4], name=sa[1], country=sa[2], genres=sa[3])
+                for sa in _BandRecommendationsPage(self.id).similar_artists]
+
+
+class SimilarBand(DynamicEnmetEntity):
+    def __init__(self, id_: str, similar_to_id: str, score: str, name: str = None, country: str = None,
+                 genres: str = None):
+        self.band = Band(id_, name=name, country=country, genres=genres)
+        self.similar_to = Band(similar_to_id)
+        self.score = int(score)
+
+    def __dir__(self) -> List[str]:
+        return dir(self.band) + ["score", "similar_to"]
+
+    def __getattr__(self, item):
+        return getattr(self.band, item)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {self.band.name} ({self.score})>"
 
 
 class Album(EnmetEntity):
@@ -710,6 +815,26 @@ class Artist(EnmetEntity):
     @cached_property
     def real_full_name(self) -> str:
         return self._artist_page.real_full_name
+
+    @cached_property
+    def age(self) -> str:
+        return self._artist_page.age
+
+    @cached_property
+    def place_of_birth(self) -> str:
+        return self._artist_page.place_of_birth
+
+    @cached_property
+    def gender(self) -> str:
+        return self._artist_page.gender
+
+    @cached_property
+    def biography(self) -> str:
+        return self._artist_page.biography
+
+    @cached_property
+    def trivia(self) -> str:
+        return self._artist_page.trivia
 
 
 class EntityArtist(DynamicEnmetEntity, ABC):
