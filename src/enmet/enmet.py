@@ -23,13 +23,14 @@ APPNAME = "enmet"
 
 _logger = logging.getLogger(APPNAME)
 
-__all__ = ["PartialDate", "ReleaseTypes", "set_session_cache", "Entity", "ExternalEntity", "EnmetEntity", "DynamicEnmetEntity",
-           "Band", "Album", "Disc", "Track", "Artist", "EntityArtist", "LineupArtist", "AlbumArtist", "search_bands",
-           "search_albums"]
+__all__ = ["PartialDate", "ReleaseTypes", "set_session_cache", "Entity", "ExternalEntity", "EnmetEntity",
+           "DynamicEnmetEntity", "Band", "Album", "Disc", "Track", "Artist", "EntityArtist", "LineupArtist",
+           "AlbumArtist", "search_bands", "search_albums", "SimilarBand"]
 
 _METALLUM_URL = "https://www.metal-archives.com"
 # Without correct user-agent there are 4xx responses
-_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.167 Safari/537.36"
+_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)" \
+              "Chrome/102.0.5005.167 Safari/537.36"
 
 
 def _url_to_id(url: str) -> str:
@@ -64,7 +65,8 @@ class PartialDate:
         return f"<{self.__class__.__name__}: year={self.year}, month={self.month}, day={self.day}>"
 
     def __str__(self):
-        return f"{self.year}{'' if self.month is None else '-{:02}'.format(self.month)}{'' if self.day is None else '-{:02}'.format(self.day)}"
+        return f"{self.year}{'' if self.month is None else '-{:02}'.format(self.month)}" \
+               f"{'' if self.day is None else '-{:02}'.format(self.day)}"
 
     def __eq__(self, other):
         return self.year == other.year and self.month == other.month and self.day == other.day
@@ -216,7 +218,8 @@ class _CachedSite:
 
     def set_session(self, **kwargs) -> CachedSession:
         """Factory method for CachedSession with delay hook."""
-        session = CachedSession(**({"cache_name": str(self._CACHE_PATH / self._CACHE_NAME), "backend": "sqlite"} | kwargs))
+        session = CachedSession(
+            **({"cache_name": str(self._CACHE_PATH / self._CACHE_NAME), "backend": "sqlite"} | kwargs))
         session.hooks['response'].append(
             lambda r, *args, **kwargs: None if not getattr(r, "from_cache", False) and sleep(1 / _CachedSite.QUERY_RATE) else None)
         self._session = session
@@ -476,7 +479,7 @@ class _ArtistPage(_DataPage):
             if caption_elem := top.find("h2", string=caption):
                 idx_caption = top.index(caption_elem)
                 has_readme = False
-                idx=0
+                idx = 0
                 for idx, elem in enumerate(top.contents[idx_caption+1:]):
                     if not isinstance(elem, Tag):
                         continue
@@ -637,7 +640,8 @@ class Band(EnmetEntity):
 
 
 class SimilarBand(DynamicEnmetEntity):
-    def __init__(self, id_: str, similar_to_id: str, score: str, name: str = None, country: str = None, genres: str = None):
+    def __init__(self, id_: str, similar_to_id: str, score: str, name: str = None, country: str = None,
+                 genres: str = None):
         self.band = Band(id_, name=name, country=country, genres=genres)
         self.similar_to = Band(similar_to_id)
         self.score = int(score)
