@@ -2,7 +2,7 @@ import logging
 import re
 import sys
 from abc import ABC
-from datetime import timedelta
+from datetime import timedelta, datetime
 from enum import Enum
 from functools import lru_cache, cached_property, reduce
 from inspect import getmembers
@@ -221,15 +221,15 @@ class _CachedSite:
         session = CachedSession(
             **({"cache_name": str(self._CACHE_PATH / self._CACHE_NAME), "backend": "sqlite"} | kwargs))
         session.hooks['response'].append(
-            lambda r, *args, **kwargs: None if not getattr(r, "from_cache", False) and sleep(1 / _CachedSite.QUERY_RATE) else None)
+            lambda r, *args, **kwargs: None if not getattr(r, "from_cache", False) and sleep(
+                1 / _CachedSite.QUERY_RATE) else None)
         self._session = session
         return session
 
     @lru_cache(maxsize=_BS_CACHE_SIZE)
-    def _cached_get(self, resource: str, params: Optional[Tuple[Tuple]]) -> BeautifulSoup:
+    def _cached_get(self, resource: str) -> BeautifulSoup:
         """Get page from Metal Archives with caching."""
         response = self._session.get(urljoin(_METALLUM_URL, resource),
-                                     params=params,
                                      headers={"User-Agent": _USER_AGENT, 'Accept-Encoding': 'gzip'}
                                      )
         response.raise_for_status()
@@ -243,8 +243,7 @@ class _CachedSite:
             self._CACHE_PATH.mkdir(parents=True, exist_ok=True)
             self.set_session()
         resource = instance.RESOURCE.format(instance.id)
-        params = getattr(instance, "PARAMS", None)
-        return self._cached_get(resource, params)
+        return self._cached_get(resource)
 
 
 class _DataPage(_Page, _CachedInstance, ABC):
@@ -342,10 +341,28 @@ class _BandPage(_DataPage):
             result[-1].append(elem.select_one("td:nth-child(2)").text.replace("\n", " ").replace("\xa0", " ").strip())
         return result
 
+    @cached_property
+    def info(self) -> str:
+        if self.enmet.select_one(".band_comment a.btn_read_more"):
+            return _BandInfoPage(self.id).info
+        else:
+            return " ".join(e.text.strip() for e in self.enmet.select_one(".band_comment").contents)
+
+    @cached_property
+    def last_modified(self) -> str:
+        return self.enmet.find("td", string=re.compile("Last modified on")).text
+
+
+class _BandInfoPage(_DataPage):
+    RESOURCE = "band/read-more/id/{}"
+
+    @cached_property
+    def info(self) -> str:
+        return self.enmet.text
+
 
 class _BandRecommendationsPage(_DataPage):
-    RESOURCE = "band/ajax-recommendations/id/{}?showMoreSimilar=1"
-    PARAMS = (("showMoreSimilar", 1),)
+    RESOURCE = "band/ajax-recommendations/id/{}/showMoreSimilar/1"
 
     @cached_property
     def similar_artists(self) -> List[List[str]]:
@@ -637,6 +654,17 @@ class Band(EnmetEntity):
     def similar_artists(self) -> List["SimilarBand"]:
         return [SimilarBand(_url_to_id(sa[0]), self.id, sa[4], name=sa[1], country=sa[2], genres=sa[3])
                 for sa in _BandRecommendationsPage(self.id).similar_artists]
+
+    @cached_property
+    def info(self) -> str:
+        return self._band_page.info
+
+    @cached_property
+    def last_modified(self) -> datetime:
+        data = self._band_page.last_modified
+        year, month, day, hour, minute, second = re.search(r"(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})",
+                                                           data).groups()
+        return datetime(year=year, month=month, day=day, hour=hour, minute=minute, second=second)
 
 
 class SimilarBand(DynamicEnmetEntity):
