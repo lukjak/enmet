@@ -9,13 +9,13 @@ from inspect import getmembers
 from os.path import expandvars, expanduser
 from pathlib import PurePath, Path
 from time import sleep
-from typing import List, Optional, Tuple, Union, Iterable, Type
 from urllib.parse import urljoin, urlparse
 from weakref import WeakValueDictionary
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Tag, ResultSet
 from requests import get
 from requests_cache import CachedSession
+from typing import List, Optional, Tuple, Union, Iterable, Type
 
 from .countries import country_to_enum_name, Countries
 
@@ -331,15 +331,30 @@ class _BandPage(_DataPage):
     def last_label(self):
         return elem.text if (elem := self._get_header_item("Last label:")) else None
 
-    @cached_property
-    def lineup(self) -> List[List[Optional[str]]]:
+    @staticmethod
+    def _get_members_list(rows: ResultSet[Tag]) -> List[List[Optional[str]]]:
         result = []
-        for elem in self.enmet.select("#band_tab_members_current tr.lineupRow"):
+        for elem in rows:
             # Artist URL, Artist
             result.append([elem.select_one("a")["href"], elem.select_one("a").text])
             # Role
             result[-1].append(elem.select_one("td:nth-child(2)").text.replace("\n", " ").replace("\xa0", " ").strip())
         return result
+
+    @cached_property
+    def lineup(self) -> List[List[Optional[str]]]:
+        rows = self.enmet.select("#band_tab_members_current tr.lineupRow")
+        return self._get_members_list(rows)
+
+    @cached_property
+    def past_members(self) -> List[List[Optional[str]]]:
+        rows = self.enmet.select("#band_tab_members_past tr.lineupRow")
+        return self._get_members_list(rows)
+
+    @cached_property
+    def live_musicians(self) -> List[List[Optional[str]]]:
+        rows = self.enmet.select("#band_tab_members_live tr.lineupRow")
+        return self._get_members_list(rows)
 
     @cached_property
     def info(self) -> str:
@@ -646,6 +661,16 @@ class Band(EnmetEntity):
         return [LineupArtist(_url_to_id(a[0]), self.id, a[1], a[2]) for a in data]
 
     @cached_property
+    def past_members(self) -> List["LineupArtist"]:
+        data = self._band_page.past_members
+        return [LineupArtist(_url_to_id(a[0]), self.id, a[1], a[2]) for a in data]
+
+    @cached_property
+    def live_musicians(self) -> List["LineupArtist"]:
+        data = self._band_page.live_musicians
+        return [LineupArtist(_url_to_id(a[0]), self.id, a[1], a[2]) for a in data]
+
+    @cached_property
     def discography(self) -> List["Album"]:
         """List of band's albums in chronological order."""
         return [Album(_url_to_id(a[0]), name=a[1], year=a[3]) for a in self._albums_page.albums]
@@ -664,7 +689,8 @@ class Band(EnmetEntity):
         data = self._band_page.last_modified
         year, month, day, hour, minute, second = re.search(r"(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})",
                                                            data).groups()
-        return datetime(year=year, month=month, day=day, hour=hour, minute=minute, second=second)
+        return datetime(year=int(year), month=int(month), day=int(day), hour=int(hour), minute=int(minute),
+                        second=int(second))
 
 
 class SimilarBand(DynamicEnmetEntity):
