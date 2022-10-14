@@ -38,8 +38,9 @@ def test_band():
     assert str(band.lineup[0].artist) == "Dave Mustaine"
     assert all(x in dir(band.lineup[0]) for x in ["name_in_lineup", "band"])
     assert band.discography[0].release_date == PartialDate(year=1984, month="March", day=9)
-    assert set(dir(band)) == {'country', 'discography', 'formed_in', 'genres', 'label', 'lineup', 'location',
-                         'lyrical_themes', 'name', 'similar_artists', 'status', 'years_active'}
+    assert set(dir(band)) == {'country', 'discography', 'formed_in', 'genres', 'info', 'label', 'last_modified',
+                              'lineup', 'live_musicians', 'location', 'lyrical_themes', 'name', 'past_members',
+                              'similar_artists', 'status', 'years_active'}
     assert len(band.similar_artists) > 180
     assert band.similar_artists[0].score > 490
     assert band.similar_artists[0].similar_to is band
@@ -78,7 +79,9 @@ def test_search_bands_set_country(mocker):
     # when
     search_bands(name="dummy", countries=[Countries.POLAND])
     # then
-    assert asp_mock.mock_calls[0] == call({'bandName': 'dummy', 'country[]': ['PL']})
+    assert asp_mock.mock_calls[0] == call(
+        {'bandName': 'dummy', 'exactBandMatch': '', 'genre': '', 'yearCreationFrom': '', 'yearCreationTo': '',
+         'country[]': ['PL']})
 
 
 def test_search_bands_no_params():
@@ -117,7 +120,10 @@ def test_search_albums_with_years(mocker):
     # when
     search_albums(name="dummy", year_from=1991, year_to=1992)
     # then
-    assert asp_mock.mock_calls[0] == call({'releaseTitle': 'dummy', 'releaseYearFrom': 1991, 'releaseYearTo': 1992, 'releaseType[]': []})
+    assert asp_mock.mock_calls[0] == call(
+        {'releaseTitle': 'dummy', 'exactReleaseMatch': '', 'bandName': '', 'exactBandMatch': '',
+         'releaseYearFrom': 1991, 'releaseMonthFrom': '', 'releaseYearTo': 1992, 'releaseMonthTo': '', 'genre': '',
+         'releaseType[]': []})
 
 
 def test_search_albums_no_params():
