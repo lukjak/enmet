@@ -182,7 +182,9 @@ class _BandSearchPage(_SearchResultsPage):
             band_link, band = bs.select_one("a")["href"], bs.select_one("a").text
             genres = item[1]
             country = item[2]  # Location if searched with single country
-            formed = item[3]
+            formed = None
+            if len(item) == 4:  # May be not present
+                formed = item[3]
             result.append((band_link, band, genres, country, formed))
         return result
 
@@ -932,7 +934,7 @@ class AlbumArtist(EntityArtist):
         return super().__dir__() + ["name_on_album", "album"]
 
 
-BAND_SEARCH_FIELDS_MAPPING = {
+_BAND_SEARCH_FIELDS_MAPPING = {
     "name": "bandName",
     "strict": "exactBandMatch",
     "genre": "genre",
@@ -944,18 +946,17 @@ BAND_SEARCH_FIELDS_MAPPING = {
 
 def search_bands(*, name: str = None, strict: bool = None, genre: str = None, countries: List[Countries] = None,
                  formed_from: int = None, formed_to: int = None) -> List[Band]:
-    params = {BAND_SEARCH_FIELDS_MAPPING[k]: v for k, v in locals().items() if v}
-    if not params:
+    if not any(locals().values()):
         return []
-    if countries is not None:
-        params[BAND_SEARCH_FIELDS_MAPPING["countries"]] = [c.value for c in countries]
+    params = {_BAND_SEARCH_FIELDS_MAPPING[k]: v or "" for k, v in locals().items()}
+    params[_BAND_SEARCH_FIELDS_MAPPING["countries"]] = [c.value for c in countries or []]
     return [Band(_url_to_id(b[0]),
                  name=b[1],
                  country=countries[0] if countries and len(countries) == 1 else b[3])
             for b in _BandSearchPage(params).bands]
 
 
-ALBUM_SEARCH_FIELDS_MAPPING = {
+_ALBUM_SEARCH_FIELDS_MAPPING = {
     "name": "releaseTitle",
     "strict": "exactReleaseMatch",
     "band": "bandName",
@@ -972,15 +973,15 @@ ALBUM_SEARCH_FIELDS_MAPPING = {
 def search_albums(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None,
                   year_from: int = None, month_from: int = None, year_to: int = None, month_to: int = None,
                   genre: str = None, release_types: List[ReleaseTypes] = None):
-    params = {ALBUM_SEARCH_FIELDS_MAPPING[k]: v for k, v in locals().items() if v}
-    if not params:
+    if not any(locals().values()):
         return []
-    params[ALBUM_SEARCH_FIELDS_MAPPING["release_types"]] = [_RELEASE_TYPE_IDS[rt] for rt in release_types or []]
+    params = {_ALBUM_SEARCH_FIELDS_MAPPING[k]: v or "" for k, v in locals().items()}
+    params[_ALBUM_SEARCH_FIELDS_MAPPING["release_types"]] = [_RELEASE_TYPE_IDS[rt] for rt in release_types or []]
     # Year is forced so that it is included in search results
     if year_from is None:
-        params[ALBUM_SEARCH_FIELDS_MAPPING["year_from"]] = 1900
+        params[_ALBUM_SEARCH_FIELDS_MAPPING["year_from"]] = 1900
     if year_to is None:
-        params[ALBUM_SEARCH_FIELDS_MAPPING["year_to"]] = 2999
+        params[_ALBUM_SEARCH_FIELDS_MAPPING["year_to"]] = 2999
     return [Album(_url_to_id(a[0]), name=a[1], year=_datestr_to_date(a[4]).year)
             for a
             in _AlbumSearchPage(params).albums]
