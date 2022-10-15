@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import call, ANY
@@ -19,7 +19,7 @@ def temp_cache():
 
 
 def test_band():
-    band = search_bands(name="megadeth", strict=True)[0]
+    band = search_bands(name="megadeth", strict=True, formed_from=1980)[0]
     assert repr(band) == "<Band: Megadeth (138)>"
     assert str(band) == "Megadeth (United States)"
     assert band.name == "Megadeth"
@@ -37,15 +37,34 @@ def test_band():
     assert band.lineup[0].artist.real_full_name == "David Scott Mustaine"
     assert str(band.lineup[0].artist) == "Dave Mustaine"
     assert all(x in dir(band.lineup[0]) for x in ["name_in_lineup", "band"])
+    assert len(band.past_members) > 22
+    assert len(band.live_musicians) > 5
     assert band.discography[0].release_date == PartialDate(year=1984, month="March", day=9)
+    assert repr(band.discography[0].discs[0]) == "<Disc: None>"
     assert set(dir(band)) == {'country', 'discography', 'formed_in', 'genres', 'info', 'label', 'last_modified',
                               'lineup', 'live_musicians', 'location', 'lyrical_themes', 'name', 'past_members',
                               'similar_artists', 'status', 'years_active'}
+    # similar_artists
     assert len(band.similar_artists) > 180
     assert band.similar_artists[0].score > 490
     assert band.similar_artists[0].similar_to is band
     assert band.similar_artists[0].name == "Metallica"
     assert "Metallica" in repr(band.similar_artists[0])
+    assert set(dir(band.similar_artists[0])) == {'country', 'discography', 'formed_in', 'genres', 'info', 'label',
+                                                 'last_modified', 'lineup', 'live_musicians', 'location',
+                                                 'lyrical_themes', 'name', 'past_members', 'score', 'similar_artists',
+                                                 'similar_to', 'status', 'years_active'}
+    assert band.info.startswith("Pictured from left to right")
+    assert band.last_modified >= datetime(2022, 10, 10, 15, 58, 54)
+
+
+def test_band_no_formed_in_no_biography():
+    # given
+    b = search_bands(name="witches of moodus")[0]
+    # then
+    assert b.formed_in is None
+    assert b.info.startswith("Compilation")
+    # assert b.lineup[1].biography is None  # no Trivia or Biography section
 
 
 def test_artist():
@@ -58,6 +77,13 @@ def test_artist():
     assert a.biography.startswith("Mustaine was born in La Mesa")
     assert a.trivia.startswith("Dave performed alongside Dream Theater")
     assert set(dir(a)) == {'age', 'biography', 'gender', 'name', 'place_of_birth', 'real_full_name', 'trivia'}
+
+
+def test_artist_two_extended_sections_first_no_read_more():
+    # given
+    a = Artist(107)
+    # then
+    assert a.biography.startswith("Adrian Smith is an English guitarist")
 
 
 def test_artist_less_extras():

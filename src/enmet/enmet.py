@@ -361,9 +361,9 @@ class _BandPage(_DataPage):
     @cached_property
     def info(self) -> str:
         if self.enmet.select_one(".band_comment a.btn_read_more"):
-            return _BandInfoPage(self.id).info
+            return _BandInfoPage(self.id).info.strip()
         else:
-            return " ".join(e.text.strip() for e in self.enmet.select_one(".band_comment").contents)
+            return " ".join(e.text.strip() for e in self.enmet.select_one(".band_comment").contents).strip()
 
     @cached_property
     def last_modified(self) -> str:
@@ -509,26 +509,27 @@ class _ArtistPage(_DataPage):
 
     def _get_extended_section(self, caption: str, cls_data_source: Type[_DataPage]) -> Optional[str]:
         # This is a mess because the HTML for this section is a mess...
-        if top := self.enmet.select_one("#member_content .band_comment"):
-            if caption_elem := top.find("h2", string=caption):
-                idx_caption = top.index(caption_elem)
-                has_readme = False
-                idx = 0
-                for idx, elem in enumerate(top.contents[idx_caption+1:]):
-                    if not isinstance(elem, Tag):
-                        continue
-                    elif elem.text == "Read more":
-                        has_readme = True
-                        break
-                    elif elem.name == "h2":
-                        break
-                else:
-                    idx += 1
-                if has_readme:
-                    return getattr(cls_data_source(self.id), caption.lower()).strip()
-                else:
-                    return " ".join([e.text.strip() for e in top.contents[idx_caption+1:idx_caption+1+idx]])
-        return None
+        top = self.enmet.select_one("#member_content .band_comment")
+        if caption_elem := top.find("h2", string=caption):
+            idx_caption = top.index(caption_elem)
+            has_readme = False
+            idx = 0
+            for idx, elem in enumerate(top.contents[idx_caption+1:]):
+                if not isinstance(elem, Tag):
+                    continue
+                elif elem.text == "Read more":
+                    has_readme = True
+                    break
+                elif elem.name == "h2":
+                    break
+            else:
+                idx += 1
+            if has_readme:
+                return getattr(cls_data_source(self.id), caption.lower()).strip()
+            else:
+                return " ".join([e.text.strip() for e in top.contents[idx_caption+1:idx_caption+1+idx]])
+        else:
+            return None
 
     @cached_property
     def biography(self) -> Optional[str]:
@@ -634,8 +635,12 @@ class Band(EnmetEntity):
         return self._band_page.location
 
     @cached_property
-    def formed_in(self) -> int:
-        return int(self._band_page.formed_in)
+    def formed_in(self) -> Optional[int]:
+        data = self._band_page.formed_in
+        if not data or data == "N/A":
+            return None
+        else:
+            return int(data)
 
     @cached_property
     def years_active(self) -> List[str]:
