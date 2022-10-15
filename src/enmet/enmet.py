@@ -73,7 +73,7 @@ class PartialDate:
 
 
 def _datestr_to_date(date_string: str) -> PartialDate:
-    """Convert date string as used on Metal Archves pages ('14th September 1984') into PartialDate object."""
+    """Convert date string as used on Metal Archives pages ('14th September 1984') into PartialDate object."""
     match date_string.split():
         case month, day, year:  # February 19th, 1981  
             day = "".join(filter(str.isdigit, day))
@@ -151,7 +151,7 @@ class _SearchResultsPage(_Page, ABC):
         self.params = params
 
     def _fetch_search_result(self):
-        """Note: iDisplayLenght does not work"""
+        """Note: iDisplayLength does not work"""
         params = self.params
         data = get(urljoin(_METALLUM_URL, self.RESOURCE),
                    params=params,
@@ -403,7 +403,7 @@ class _AlbumPage(_DataPage):
 
     @cached_property
     def bands(self) -> List[Tuple[str, str]]:
-        """List of album bands, more than 1 for splits, coperations etc."""
+        """List of album bands, more than 1 for splits, cooperations etc."""
         bands = []
         elems = self.enmet.select("#album_info .band_name a")
         for b in elems:
