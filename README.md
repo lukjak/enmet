@@ -142,6 +142,10 @@ Note: any optional parameters in constructors that provide values related to an 
     - `lineup(self) -> List["LineupArtist"]` (current or last known)
     - `discography(self) -> List["Album"]`
     - `similar_artists(self) -> List["SimilarBand"]` (Note: There is naming inconseqence here on Metal Archives page - this list refers to bands, not artists, ie. persons. Property name follows Metal Archives wording, but otherwise the notion of "band" is used.)
+    - `past_members(self) -> List["LineupArtist"]`
+    - `live_musicians(self) -> List["LineupArtist"]`
+    - `info(self) -> str` (free text information below header items)
+    - `last_modified(self) -> datetime` (date of the last band page modification)
 - `Disc(DynamicEnmetEntity)`. This class represents a disc of an album. More precisely, it is a container which holds some or all tracks of the album. Except for a CD, it can be in fact a physical cassette, VHS, DVD or even arbitrary partition in case of electronic releases - whatever Metal Archives considers a "disc". 
   - `__init__(self, album_id: str, number: int = 0, bands: List[Band] = None)`. `album_id` is id of an album the disc belongs to. `number` is ordinal number of the disc on the album (counted from 0). `bands` is a list of bands that perform tracks on the disc.
   - Attributes and properties:
