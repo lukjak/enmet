@@ -2,20 +2,20 @@ import logging
 import re
 import sys
 from abc import ABC
-from datetime import timedelta
+from datetime import timedelta, datetime
 from enum import Enum
 from functools import lru_cache, cached_property, reduce
 from inspect import getmembers
 from os.path import expandvars, expanduser
 from pathlib import PurePath, Path
 from time import sleep
-from typing import List, Optional, Tuple, Union, Iterable, Type
 from urllib.parse import urljoin, urlparse
 from weakref import WeakValueDictionary
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Tag, ResultSet
 from requests import get
 from requests_cache import CachedSession
+from typing import List, Optional, Tuple, Union, Iterable, Type
 
 from .countries import country_to_enum_name, Countries
 
@@ -73,7 +73,7 @@ class PartialDate:
 
 
 def _datestr_to_date(date_string: str) -> PartialDate:
-    """Convert date string as used on Metal Archves pages ('14th September 1984') into PartialDate object."""
+    """Convert date string as used on Metal Archives pages ('14th September 1984') into PartialDate object."""
     match date_string.split():
         case month, day, year:  # February 19th, 1981  
             day = "".join(filter(str.isdigit, day))
@@ -151,7 +151,7 @@ class _SearchResultsPage(_Page, ABC):
         self.params = params
 
     def _fetch_search_result(self):
-        """Note: iDisplayLenght does not work"""
+        """Note: iDisplayLength does not work"""
         params = self.params
         data = get(urljoin(_METALLUM_URL, self.RESOURCE),
                    params=params,
@@ -182,7 +182,9 @@ class _BandSearchPage(_SearchResultsPage):
             band_link, band = bs.select_one("a")["href"], bs.select_one("a").text
             genres = item[1]
             country = item[2]  # Location if searched with single country
-            formed = item[3]
+            formed = None
+            if len(item) == 4:  # May be not present
+                formed = item[3]
             result.append((band_link, band, genres, country, formed))
         return result
 
@@ -221,15 +223,15 @@ class _CachedSite:
         session = CachedSession(
             **({"cache_name": str(self._CACHE_PATH / self._CACHE_NAME), "backend": "sqlite"} | kwargs))
         session.hooks['response'].append(
-            lambda r, *args, **kwargs: None if not getattr(r, "from_cache", False) and sleep(1 / _CachedSite.QUERY_RATE) else None)
+            lambda r, *args, **kwargs: None if not getattr(r, "from_cache", False) and sleep(
+                1 / _CachedSite.QUERY_RATE) else None)
         self._session = session
         return session
 
     @lru_cache(maxsize=_BS_CACHE_SIZE)
-    def _cached_get(self, resource: str, params: Optional[Tuple[Tuple]]) -> BeautifulSoup:
+    def _cached_get(self, resource: str) -> BeautifulSoup:
         """Get page from Metal Archives with caching."""
         response = self._session.get(urljoin(_METALLUM_URL, resource),
-                                     params=params,
                                      headers={"User-Agent": _USER_AGENT, 'Accept-Encoding': 'gzip'}
                                      )
         response.raise_for_status()
@@ -243,8 +245,7 @@ class _CachedSite:
             self._CACHE_PATH.mkdir(parents=True, exist_ok=True)
             self.set_session()
         resource = instance.RESOURCE.format(instance.id)
-        params = getattr(instance, "PARAMS", None)
-        return self._cached_get(resource, params)
+        return self._cached_get(resource)
 
 
 class _DataPage(_Page, _CachedInstance, ABC):
@@ -332,20 +333,53 @@ class _BandPage(_DataPage):
     def last_label(self):
         return elem.text if (elem := self._get_header_item("Last label:")) else None
 
-    @cached_property
-    def lineup(self) -> List[List[Optional[str]]]:
+    @staticmethod
+    def _get_members_list(rows: ResultSet[Tag]) -> List[List[Optional[str]]]:
         result = []
-        for elem in self.enmet.select("#band_tab_members_current tr.lineupRow"):
+        for elem in rows:
             # Artist URL, Artist
             result.append([elem.select_one("a")["href"], elem.select_one("a").text])
             # Role
             result[-1].append(elem.select_one("td:nth-child(2)").text.replace("\n", " ").replace("\xa0", " ").strip())
         return result
 
+    @cached_property
+    def lineup(self) -> List[List[Optional[str]]]:
+        rows = self.enmet.select("#band_tab_members_current tr.lineupRow")
+        return self._get_members_list(rows)
+
+    @cached_property
+    def past_members(self) -> List[List[Optional[str]]]:
+        rows = self.enmet.select("#band_tab_members_past tr.lineupRow")
+        return self._get_members_list(rows)
+
+    @cached_property
+    def live_musicians(self) -> List[List[Optional[str]]]:
+        rows = self.enmet.select("#band_tab_members_live tr.lineupRow")
+        return self._get_members_list(rows)
+
+    @cached_property
+    def info(self) -> str:
+        if self.enmet.select_one(".band_comment a.btn_read_more"):
+            return _BandInfoPage(self.id).info.strip()
+        else:
+            return " ".join(e.text.strip() for e in self.enmet.select_one(".band_comment").contents).strip()
+
+    @cached_property
+    def last_modified(self) -> str:
+        return self.enmet.find("td", string=re.compile("Last modified on")).text
+
+
+class _BandInfoPage(_DataPage):
+    RESOURCE = "band/read-more/id/{}"
+
+    @cached_property
+    def info(self) -> str:
+        return self.enmet.text
+
 
 class _BandRecommendationsPage(_DataPage):
-    RESOURCE = "band/ajax-recommendations/id/{}?showMoreSimilar=1"
-    PARAMS = (("showMoreSimilar", 1),)
+    RESOURCE = "band/ajax-recommendations/id/{}/showMoreSimilar/1"
 
     @cached_property
     def similar_artists(self) -> List[List[str]]:
@@ -369,7 +403,7 @@ class _AlbumPage(_DataPage):
 
     @cached_property
     def bands(self) -> List[Tuple[str, str]]:
-        """List of album bands, more than 1 for splits, coperations etc."""
+        """List of album bands, more than 1 for splits, cooperations etc."""
         bands = []
         elems = self.enmet.select("#album_info .band_name a")
         for b in elems:
@@ -475,26 +509,27 @@ class _ArtistPage(_DataPage):
 
     def _get_extended_section(self, caption: str, cls_data_source: Type[_DataPage]) -> Optional[str]:
         # This is a mess because the HTML for this section is a mess...
-        if top := self.enmet.select_one("#member_content .band_comment"):
-            if caption_elem := top.find("h2", string=caption):
-                idx_caption = top.index(caption_elem)
-                has_readme = False
-                idx = 0
-                for idx, elem in enumerate(top.contents[idx_caption+1:]):
-                    if not isinstance(elem, Tag):
-                        continue
-                    elif elem.text == "Read more":
-                        has_readme = True
-                        break
-                    elif elem.name == "h2":
-                        break
-                else:
-                    idx += 1
-                if has_readme:
-                    return getattr(cls_data_source(self.id), caption.lower()).strip()
-                else:
-                    return " ".join([e.text.strip() for e in top.contents[idx_caption+1:idx_caption+1+idx]])
-        return None
+        top = self.enmet.select_one("#member_content .band_comment")
+        if caption_elem := top.find("h2", string=caption):
+            idx_caption = top.index(caption_elem)
+            has_readme = False
+            idx = 0
+            for idx, elem in enumerate(top.contents[idx_caption+1:]):
+                if not isinstance(elem, Tag):
+                    continue
+                elif elem.text == "Read more":
+                    has_readme = True
+                    break
+                elif elem.name == "h2":
+                    break
+            else:
+                idx += 1
+            if has_readme:
+                return getattr(cls_data_source(self.id), caption.lower()).strip()
+            else:
+                return " ".join([e.text.strip() for e in top.contents[idx_caption+1:idx_caption+1+idx]])
+        else:
+            return None
 
     @cached_property
     def biography(self) -> Optional[str]:
@@ -600,8 +635,12 @@ class Band(EnmetEntity):
         return self._band_page.location
 
     @cached_property
-    def formed_in(self) -> int:
-        return int(self._band_page.formed_in)
+    def formed_in(self) -> Optional[int]:
+        data = self._band_page.formed_in
+        if not data or data == "N/A":
+            return None
+        else:
+            return int(data)
 
     @cached_property
     def years_active(self) -> List[str]:
@@ -629,6 +668,16 @@ class Band(EnmetEntity):
         return [LineupArtist(_url_to_id(a[0]), self.id, a[1], a[2]) for a in data]
 
     @cached_property
+    def past_members(self) -> List["LineupArtist"]:
+        data = self._band_page.past_members
+        return [LineupArtist(_url_to_id(a[0]), self.id, a[1], a[2]) for a in data]
+
+    @cached_property
+    def live_musicians(self) -> List["LineupArtist"]:
+        data = self._band_page.live_musicians
+        return [LineupArtist(_url_to_id(a[0]), self.id, a[1], a[2]) for a in data]
+
+    @cached_property
     def discography(self) -> List["Album"]:
         """List of band's albums in chronological order."""
         return [Album(_url_to_id(a[0]), name=a[1], year=a[3]) for a in self._albums_page.albums]
@@ -637,6 +686,18 @@ class Band(EnmetEntity):
     def similar_artists(self) -> List["SimilarBand"]:
         return [SimilarBand(_url_to_id(sa[0]), self.id, sa[4], name=sa[1], country=sa[2], genres=sa[3])
                 for sa in _BandRecommendationsPage(self.id).similar_artists]
+
+    @cached_property
+    def info(self) -> str:
+        return self._band_page.info
+
+    @cached_property
+    def last_modified(self) -> datetime:
+        data = self._band_page.last_modified
+        year, month, day, hour, minute, second = re.search(r"(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})",
+                                                           data).groups()
+        return datetime(year=int(year), month=int(month), day=int(day), hour=int(hour), minute=int(minute),
+                        second=int(second))
 
 
 class SimilarBand(DynamicEnmetEntity):
@@ -878,7 +939,7 @@ class AlbumArtist(EntityArtist):
         return super().__dir__() + ["name_on_album", "album"]
 
 
-BAND_SEARCH_FIELDS_MAPPING = {
+_BAND_SEARCH_FIELDS_MAPPING = {
     "name": "bandName",
     "strict": "exactBandMatch",
     "genre": "genre",
@@ -890,18 +951,17 @@ BAND_SEARCH_FIELDS_MAPPING = {
 
 def search_bands(*, name: str = None, strict: bool = None, genre: str = None, countries: List[Countries] = None,
                  formed_from: int = None, formed_to: int = None) -> List[Band]:
-    params = {BAND_SEARCH_FIELDS_MAPPING[k]: v for k, v in locals().items() if v}
-    if not params:
+    if not any(locals().values()):
         return []
-    if countries is not None:
-        params[BAND_SEARCH_FIELDS_MAPPING["countries"]] = [c.value for c in countries]
+    params = {_BAND_SEARCH_FIELDS_MAPPING[k]: v or "" for k, v in locals().items()}
+    params[_BAND_SEARCH_FIELDS_MAPPING["countries"]] = [c.value for c in countries or []]
     return [Band(_url_to_id(b[0]),
                  name=b[1],
                  country=countries[0] if countries and len(countries) == 1 else b[3])
             for b in _BandSearchPage(params).bands]
 
 
-ALBUM_SEARCH_FIELDS_MAPPING = {
+_ALBUM_SEARCH_FIELDS_MAPPING = {
     "name": "releaseTitle",
     "strict": "exactReleaseMatch",
     "band": "bandName",
@@ -918,15 +978,15 @@ ALBUM_SEARCH_FIELDS_MAPPING = {
 def search_albums(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None,
                   year_from: int = None, month_from: int = None, year_to: int = None, month_to: int = None,
                   genre: str = None, release_types: List[ReleaseTypes] = None):
-    params = {ALBUM_SEARCH_FIELDS_MAPPING[k]: v for k, v in locals().items() if v}
-    if not params:
+    if not any(locals().values()):
         return []
-    params[ALBUM_SEARCH_FIELDS_MAPPING["release_types"]] = [_RELEASE_TYPE_IDS[rt] for rt in release_types or []]
+    params = {_ALBUM_SEARCH_FIELDS_MAPPING[k]: v or "" for k, v in locals().items()}
+    params[_ALBUM_SEARCH_FIELDS_MAPPING["release_types"]] = [_RELEASE_TYPE_IDS[rt] for rt in release_types or []]
     # Year is forced so that it is included in search results
     if year_from is None:
-        params[ALBUM_SEARCH_FIELDS_MAPPING["year_from"]] = 1900
+        params[_ALBUM_SEARCH_FIELDS_MAPPING["year_from"]] = 1900
     if year_to is None:
-        params[ALBUM_SEARCH_FIELDS_MAPPING["year_to"]] = 2999
+        params[_ALBUM_SEARCH_FIELDS_MAPPING["year_to"]] = 2999
     return [Album(_url_to_id(a[0]), name=a[1], year=_datestr_to_date(a[4]).year)
             for a
             in _AlbumSearchPage(params).albums]
