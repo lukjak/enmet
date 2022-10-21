@@ -88,9 +88,11 @@ print(megadeth is megadeth2)
 
 ## Reference manual
 
-Note: any _id__ parameters can be passed as numbers and they will be converted to strings internally. Identifiers can contain letters in some cases.  
+Note: Any _id__ parameters can be passed as numbers and they will be converted to strings internally. Identifiers can contain letters in some cases.  
 
-Note: any optional parameters in constructors that provide values related to an entity and which are not provided when creating the object, are resolved lazily later.
+Note: Any optional parameters in constructors that provide values related to an entity and which are not provided when creating the object, are resolved lazily later.
+
+Note: Any "empty" values are returned as `None` or `[]`. This refers both to values nonexistent for a given entity and values with equvalen meaning (like "N/A", "Unknown" etc.).
 
 ### Classes
 
@@ -202,6 +204,7 @@ Note: any optional parameters in constructors that provide values related to an 
   - `year_from`, `month_from`, `year_to`, `month_to` - time range for album release date
   - `genre` - genre name (substring matching)
   - `release_types` - list of ReleaseType enum members
+- `random_band() -> Band` - get a random band from The Metal Archives. This function is used mainly for testing.   
 
 ### Enums
 - `Countries`. This is a dynamic enum with available countries.

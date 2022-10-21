@@ -66,4 +66,5 @@ def search_albums(*, name: str = None, strict: bool = None, band: str = None, ba
 
 
 def random_band() -> Band:
+    """Just get a random band."""
     return Band(url_to_id(RandomBandPage().band))

@@ -37,7 +37,8 @@ def _turn_na_into_none(data: Union[str, List, timedelta]) -> Union[List, None, s
         return None
     elif isinstance(data, str) and data.lower() in ["n/a", "unknown"] or data == "":
         return None
-    return data
+    else:
+        return data
 
 
 class Entity(ABC):
