@@ -30,6 +30,16 @@ def _discstr_to_name(name: Optional[str]) -> Optional[str]:
         return None
 
 
+def _turn_na_into_none(data: Union[str, List, timedelta]) -> Union[List, None, str]:
+    if isinstance(data, list) and len(data) == 1 and data[0].lower() == "n/a":
+        return []
+    elif isinstance(data, timedelta) and data == timedelta(0):
+        return None
+    elif isinstance(data, str) and data.lower() in ["n/a", "unknown"] or data == "":
+        return None
+    return data
+
+
 class Entity(ABC):
     """A thing, like band or album"""
     def __repr__(self):
@@ -95,19 +105,17 @@ class Band(EnmetEntity):
 
     @cached_property
     def location(self) -> str:
-        return self._band_page.location
+        return _turn_na_into_none(self._band_page.location)
 
     @cached_property
     def formed_in(self) -> Optional[int]:
         data = self._band_page.formed_in
-        if not data or data == "N/A":
-            return None
-        else:
-            return int(data)
+        value = _turn_na_into_none(data)
+        return int(value) if value else value
 
     @cached_property
     def years_active(self) -> List[str]:
-        return self._band_page.years_active
+        return _turn_na_into_none(self._band_page.years_active)
 
     @cached_property
     def genres(self) -> List[str]:
@@ -118,8 +126,8 @@ class Band(EnmetEntity):
         return self._band_page.status
 
     @cached_property
-    def lyrical_themes(self) -> List[str]:
-        return self._band_page.lyrical_themes
+    def lyrical_themes(self) -> Optional[List[str]]:
+        return _turn_na_into_none(self._band_page.lyrical_themes)
 
     @cached_property
     def label(self) -> str:
@@ -152,7 +160,7 @@ class Band(EnmetEntity):
 
     @cached_property
     def info(self) -> str:
-        return self._band_page.info
+        return _turn_na_into_none(self._band_page.info)
 
     @cached_property
     def last_modified(self) -> datetime:
@@ -223,7 +231,7 @@ class Album(EnmetEntity):
 
     @cached_property
     def format(self) -> str:
-        return self._album_page.format
+        return _turn_na_into_none(self._album_page.format)
 
     @cached_property
     def reviews(self) -> Tuple[str, str]:
@@ -231,7 +239,7 @@ class Album(EnmetEntity):
 
     @cached_property
     def catalog_id(self) -> str:
-        return self._album_page.catalog_id
+        return _turn_na_into_none(self._album_page.catalog_id)
 
     @cached_property
     def discs(self) -> List["Disc"]:
@@ -243,7 +251,7 @@ class Album(EnmetEntity):
 
     @cached_property
     def total_time(self) -> timedelta:
-        return reduce(timedelta.__add__, [disc.total_time for disc in self.discs if disc.total_time], timedelta())
+        return _turn_na_into_none(reduce(timedelta.__add__, [disc.total_time for disc in self.discs if disc.total_time], timedelta()))
 
 
 class Disc(DynamicEnmetEntity):
@@ -371,9 +379,6 @@ class EntityArtist(DynamicEnmetEntity, ABC):
     def __getattr__(self, item):
         return getattr(self.artist, item)
 
-    def __repr__(self):
-        return f"<{self.__class__.__name__}: {self.artist.name} ({self.id})>"
-
     def __dir__(self) -> List[str]:
         return dir(self.artist) + ["role"]
 
@@ -389,6 +394,12 @@ class LineupArtist(EntityArtist):
     def __dir__(self) -> Iterable[str]:
         return super().__dir__() + ["name_in_lineup", "band"]
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {self.name_in_lineup} ({self.id})>"
+
+    def __str__(self):
+        return self.name_in_lineup
+
 
 class AlbumArtist(EntityArtist):
     """Artist for an album"""
@@ -400,3 +411,9 @@ class AlbumArtist(EntityArtist):
 
     def __dir__(self) -> Iterable[str]:
         return super().__dir__() + ["name_on_album", "album"]
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {self.name_on_album} ({self.id})>"
+
+    def __str__(self):
+        return self.name_on_album
