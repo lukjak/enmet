@@ -3,7 +3,7 @@ from typing import List
 from enmet import Countries
 from enmet.common import ReleaseTypes, url_to_id, datestr_to_date
 from enmet.entities import Band, Album
-from enmet.pages import BandSearchPage, AlbumSearchPage
+from enmet.pages import BandSearchPage, AlbumSearchPage, RandomBandPage
 
 __all__ = ["search_albums", "search_bands"]
 
@@ -63,3 +63,7 @@ def search_albums(*, name: str = None, strict: bool = None, band: str = None, ba
     return [Album(url_to_id(a[0]), name=a[1], year=datestr_to_date(a[4]).year)
             for a
             in AlbumSearchPage(params).albums]
+
+
+def random_band() -> Band:
+    return Band(url_to_id(RandomBandPage().band))

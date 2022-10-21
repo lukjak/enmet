@@ -22,6 +22,11 @@ _USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHT
               "Chrome/102.0.5005.167 Safari/537.36"
 
 
+def _split_by_sep(data: str) -> List[str]:
+    """Split different text list (genres, lyrical themes etc.) into separate parts."""
+    return re.split(r"\s*[,;]\s*", data.strip())
+
+
 class _Page(ABC):
     # Path part of URL
     RESOURCE = None
@@ -261,6 +266,8 @@ class BandRecommendationsPage(_DataPage):
     def similar_artists(self) -> List[List[str]]:
         rows = self.enmet.select("#artist_list tr:not(:last-child)")
         results = []
+        if len(rows) and rows[0].text.startswith("No similar artist"):
+            return results
         for row in rows:
             data = row.select("td")
             results.append([data[0].select_one("a")["href"], data[0].text])  # Band URL, band name
@@ -443,11 +450,14 @@ class LyricsPage(_DataPage):
         return self.enmet.get_text().strip()
 
 
+class RandomBandPage:
+    @cached_property
+    def band(self) -> str:
+        data = get(urljoin(_METALLUM_URL, "band/random"),
+                   headers={"User-Agent": _USER_AGENT})
+        return data.url
+
+
 def set_session_cache(**kwargs) -> CachedSession:
     """Set cache for DataPages reads"""
     return _DataPage.set_session_cache(**kwargs)
-
-
-def _split_by_sep(data: str) -> List[str]:
-    """Split different text list (genres, lyrical themes etc.) into separate parts."""
-    return re.split(r"\s*[,;]\s*", data.strip())
