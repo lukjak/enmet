@@ -5,7 +5,7 @@ from enmet.common import ReleaseTypes, url_to_id, datestr_to_date
 from enmet.entities import Band, Album
 from enmet.pages import BandSearchPage, AlbumSearchPage, RandomBandPage
 
-__all__ = ["search_albums", "search_bands"]
+__all__ = ["search_albums", "search_bands", "random_band"]
 
 _RELEASE_TYPE_IDS = {ReleaseTypes.FULL: 1, ReleaseTypes.LIVE: 2, ReleaseTypes.DEMO: 3, ReleaseTypes.SINGLE: 4,
                      ReleaseTypes.EP: 5, ReleaseTypes.VIDEO: 6, ReleaseTypes.BOX: 7, ReleaseTypes.SPLIT: 8,
