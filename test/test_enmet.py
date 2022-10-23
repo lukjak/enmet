@@ -6,9 +6,10 @@ from unittest.mock import call, ANY
 import pytest
 from bs4 import BeautifulSoup
 
-from src.enmet.enmet import search_albums, PartialDate, Album, search_bands, _datestr_to_date, Artist, Track, Band, \
-    ReleaseTypes, EnmetEntity, set_session_cache, _CachedSite
-from src.enmet.countries import Countries
+from enmet import set_session_cache, search_bands, Artist, PartialDate, Band, Countries, search_albums, ReleaseTypes, \
+    Album, Track, EnmetEntity
+from enmet.common import datestr_to_date
+from enmet.pages import _CachedSite
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -101,7 +102,7 @@ def test_band_splitup():
 
 def test_search_bands_set_country(mocker):
     # given
-    asp_mock = mocker.patch("src.enmet.enmet._BandSearchPage")
+    asp_mock = mocker.patch("enmet.search.BandSearchPage")
     # when
     search_bands(name="dummy", countries=[Countries.POLAND])
     # then
@@ -142,7 +143,7 @@ def test_album():
 
 def test_search_albums_with_years(mocker):
     # given
-    asp_mock = mocker.patch("src.enmet.enmet._AlbumSearchPage")
+    asp_mock = mocker.patch("enmet.search.AlbumSearchPage")
     # when
     search_albums(name="dummy", year_from=1991, year_to=1992)
     # then
@@ -234,7 +235,7 @@ def test_partial_date_str_repr():
                          [("March 1999", 1999, 3, None), ("2004", 2004, None, None)])
 def test_datestr_to_date(datestr, year, month, day):
     # given
-    result = _datestr_to_date(datestr)
+    result = datestr_to_date(datestr)
     # then
     assert result.year == year
     assert result.month == month
@@ -255,7 +256,7 @@ def test_Track_no_band_for_track():
                                                  ("label", SimpleNamespace(text=3), 3)])
 def test_Band_properties(mocker, attr, val, expected):
     # given
-    mocker.patch("src.enmet.enmet._DataPage._get_header_item", lambda p1, p2: val)
+    mocker.patch("enmet.pages._DataPage._get_header_item", lambda p1, p2: val)
     # when
     b = Band("dummy")
     # then
@@ -269,7 +270,7 @@ def test_Album_properties_reviews(mocker):
 
         def select_one(self, _):
             return None
-    mocker.patch("src.enmet.enmet._DataPage._get_header_item", lambda p1, p2: Dummy())
+    mocker.patch("enmet.pages._DataPage._get_header_item", lambda p1, p2: Dummy())
     # when
     b = Album("dummy").reviews
     # then
@@ -317,9 +318,9 @@ def test_EnmetEntity_re_init():
 
 def test_create_default_cache(mocker):
     #given
-    cs_mock = mocker.patch("src.enmet.enmet.CachedSession")
+    cs_mock = mocker.patch("enmet.pages.CachedSession")
     cs_mock.return_value.get.return_value = SimpleNamespace(content="<HTML />", raise_for_status=lambda: None)
-    cp_mock = mocker.patch("src.enmet.enmet._CachedSite._CACHE_PATH")
+    cp_mock = mocker.patch("enmet.pages._CachedSite._CACHE_PATH")
 
     class Dummy:
         RESOURCE = "ABC_resource"

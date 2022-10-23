@@ -3,6 +3,8 @@ from enum import Enum
 
 from bs4 import BeautifulSoup
 
+__all__ = ["Countries", "country_to_enum_name"]
+
 # Copied from search page
 DATA = '''
 <select name="country"
