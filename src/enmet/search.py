@@ -1,6 +1,6 @@
 from typing import List
 
-from enmet import Countries
+from enmet import Countries, country_to_enum_name
 from enmet.common import ReleaseTypes, url_to_id, datestr_to_date
 from enmet.entities import Band, Album
 from enmet.pages import BandSearchPage, AlbumSearchPage, RandomBandPage
@@ -30,7 +30,7 @@ def search_bands(*, name: str = None, strict: bool = None, genre: str = None, co
     params[_BAND_SEARCH_FIELDS_MAPPING["countries"]] = [c.value for c in countries or []]
     return [Band(url_to_id(b[0]),
                  name=b[1],
-                 country=countries[0] if countries and len(countries) == 1 else b[3])
+                 country=countries[0] if countries and len(countries) == 1 else Countries[country_to_enum_name(b[3])])
             for b in BandSearchPage(params).bands]
 
 

@@ -81,13 +81,13 @@ class DynamicEnmetEntity(Entity, ABC):
 
 class Band(EnmetEntity):
     """Band or artist performing as a band."""
-    def __init__(self, id_: str, *, name: str = None, country: str = None, genres: str = None):
+    def __init__(self, id_: str, *, name: str = None, country: Countries = None, genres: str = None):
         if not hasattr(self, "id"):
             super().__init__(id_)
             if name is not None:
                 setattr(self, "name", name)
             if country is not None:
-                setattr(self, "country", Countries[country_to_enum_name(country)])
+                setattr(self, "country", country)
             if genres is not None:
                 setattr(self, "genres", genres)
             self._band_page = BandPage(self.id)
