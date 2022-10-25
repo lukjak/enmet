@@ -322,7 +322,7 @@ class AlbumPage(_DataPage):
             return None, elem.text
 
     @cached_property
-    def tracks(self):
+    def tracks(self) -> List[List[Union[str, Optional[bool]]]]:
         result = [[]]
         for elem in self.enmet.select_one("#album_tabs_tracklist").select("tr.even,tr.odd,.discRow"):
             if "discRow" in elem["class"]:
