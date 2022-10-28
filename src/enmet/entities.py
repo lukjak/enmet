@@ -3,7 +3,7 @@ from abc import ABC
 from datetime import datetime, timedelta
 from functools import cached_property, reduce
 from inspect import getmembers
-from typing import List, Iterable, Optional, Tuple, Union
+from typing import List, Iterable, Optional, Tuple, Union, Dict
 
 from .countries import Countries, country_to_enum_name
 from .common import CachedInstance, ReleaseTypes, url_to_id, datestr_to_date, PartialDate
@@ -56,11 +56,13 @@ class ExternalEntity(Entity):
     It has only string representation and is a class just for the
     sake of consistency.
     """
-    def __init__(self, name: str):
+    def __init__(self, name: str, **kwargs):
         self.name = name
+        for arg in kwargs:
+            setattr(self, arg, kwargs[arg])
 
     def __dir__(self) -> Iterable[str]:
-        return ["name"]
+        return vars(self)
 
 
 class EnmetEntity(Entity, CachedInstance, ABC):
@@ -384,6 +386,34 @@ class Artist(EnmetEntity):
     @cached_property
     def trivia(self) -> str:
         return self._artist_page.trivia
+
+    def _get_bands(self, attrib: str) -> Dict[Band, List[Album]]:
+        data = getattr(self._artist_page, attrib)
+        result = {
+            Band(url_to_id(band[0]), name=band[1]) if band[0] else ExternalEntity(band[1], role=band[2]):
+                [Album(url_to_id(album[0]), name=album[1]) for album in data[band]]
+            for band in data}
+        return result
+
+    @cached_property
+    def active_bands(self) -> Dict[Band, List[Album]]:
+        return self._get_bands("active_bands")
+
+    @cached_property
+    def past_bands(self) -> Dict[Band, List[Album]]:
+        return self._get_bands("past_bands")
+
+    @cached_property
+    def guest_session(self) -> Dict[Band, List[Album]]:
+        return self._get_bands("guest_session")
+
+    @cached_property
+    def misc_staff(self) -> Dict[Band, List[Album]]:
+        return self._get_bands("misc_staff")
+
+    @cached_property
+    def links(self) -> List[Tuple[str, str]]:
+        return self._artist_page.links
 
 
 class EntityArtist(DynamicEnmetEntity, ABC):
