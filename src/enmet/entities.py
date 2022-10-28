@@ -30,7 +30,7 @@ def _discstr_to_name(name: Optional[str]) -> Optional[str]:
         return None
 
 
-def _turn_na_into_none(data: Union[str, List, timedelta]) -> Union[List, None, str]:
+def _turn_na_into_none(data: Union[str, List, timedelta]) -> Union[List, None, str, timedelta]:
     if isinstance(data, list) and len(data) == 1 and data[0].lower() == "n/a":
         return []
     elif isinstance(data, timedelta) and data == timedelta(0):
@@ -246,13 +246,29 @@ class Album(EnmetEntity):
     def discs(self) -> List["Disc"]:
         return [Disc(self.id, idx, self.bands) for idx in range(len(self._album_page.disc_names))]
 
-    @cached_property
-    def lineup(self) -> List["AlbumArtist"]:
-        return [AlbumArtist(url_to_id(a[0]), self.id, name=a[1], role=a[2]) for a in self._album_page.lineup]
+    def _get_artists_for_kind(self, kind: str) -> List["AlbumArtist"]:
+        return [AlbumArtist(url_to_id(a[0]), self.id, name=a[1], role=a[2]) for a in getattr(self._album_page, kind)]
 
     @cached_property
-    def total_time(self) -> timedelta:
-        return _turn_na_into_none(reduce(timedelta.__add__, [disc.total_time for disc in self.discs if disc.total_time], timedelta()))
+    def lineup(self) -> List["AlbumArtist"]:
+        return self._get_artists_for_kind("lineup")
+
+    @cached_property
+    def guest_session_musicians(self) -> List["AlbumArtist"]:
+        return self._get_artists_for_kind("guest_session_musicians")
+
+    @cached_property
+    def other_staff(self) -> List["AlbumArtist"]:
+        return self._get_artists_for_kind("other_staff")
+
+    @cached_property
+    def total_time(self) -> Optional[timedelta]:
+        return _turn_na_into_none(
+            reduce(timedelta.__add__, [disc.total_time for disc in self.discs if disc.total_time], timedelta()))
+
+    @cached_property
+    def additional_notes(self) -> str:
+        return self._album_page.additional_notes
 
 
 class Disc(DynamicEnmetEntity):
