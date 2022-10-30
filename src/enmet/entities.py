@@ -301,7 +301,7 @@ class Disc(DynamicEnmetEntity):
     def tracks(self) -> List["Track"]:
         tracks = []
         for t in self._album_page.tracks[self._number]:
-            tracks.append(Track(t[0], self._bands, t[1], t[2], _timestr_to_time(t[3]), t[4]))
+            tracks.append(Track(t[0], self._bands, int(t[1]), t[2], _timestr_to_time(t[3]), t[4]))
         return tracks
 
 
@@ -402,19 +402,19 @@ class Artist(EnmetEntity):
         return result
 
     @cached_property
-    def active_bands(self) -> Dict[Band, List[Album]]:
+    def active_bands(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
         return self._get_bands("active_bands")
 
     @cached_property
-    def past_bands(self) -> Dict[Band, List[Album]]:
+    def past_bands(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
         return self._get_bands("past_bands")
 
     @cached_property
-    def guest_session(self) -> Dict[Band, List[Album]]:
+    def guest_session(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
         return self._get_bands("guest_session")
 
     @cached_property
-    def misc_staff(self) -> Dict[Band, List[Album]]:
+    def misc_staff(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
         return self._get_bands("misc_staff")
 
     @cached_property

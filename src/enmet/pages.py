@@ -333,7 +333,7 @@ class AlbumPage(_DataPage):
             result[-1].append([elem.select_one("td:nth-of-type(1) a")["name"]])
             # Number
             number = elem.select_one("td:nth-of-type(1)").text
-            result[-1][-1].append(int(number[:number.index(".")]))
+            result[-1][-1].append(number[:number.index(".")])
             # Name
             result[-1][-1].append(elem.select_one("td:nth-of-type(2)").text.strip())
             # Time
