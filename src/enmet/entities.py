@@ -3,7 +3,7 @@ from abc import ABC
 from datetime import datetime, timedelta
 from functools import cached_property, reduce
 from inspect import getmembers
-from typing import List, Iterable, Optional, Tuple, Union
+from typing import List, Iterable, Optional, Tuple, Union, Dict
 
 from .countries import Countries, country_to_enum_name
 from .common import CachedInstance, ReleaseTypes, url_to_id, datestr_to_date, PartialDate
@@ -30,7 +30,7 @@ def _discstr_to_name(name: Optional[str]) -> Optional[str]:
         return None
 
 
-def _turn_na_into_none(data: Union[str, List, timedelta]) -> Union[List, None, str]:
+def _turn_na_into_none(data: Union[str, List, timedelta]) -> Union[List, None, str, timedelta]:
     if isinstance(data, list) and len(data) == 1 and data[0].lower() == "n/a":
         return []
     elif isinstance(data, timedelta) and data == timedelta(0):
@@ -56,11 +56,19 @@ class ExternalEntity(Entity):
     It has only string representation and is a class just for the
     sake of consistency.
     """
-    def __init__(self, name: str):
+    def __init__(self, name: str, **kwargs):
         self.name = name
+        for arg in kwargs:
+            setattr(self, arg, kwargs[arg])
 
     def __dir__(self) -> Iterable[str]:
-        return ["name"]
+        return vars(self)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __hash__(self):
+        return hash(tuple(sorted((k, getattr(self, k)) for k in vars(self))))
 
 
 class EnmetEntity(Entity, CachedInstance, ABC):
@@ -246,13 +254,29 @@ class Album(EnmetEntity):
     def discs(self) -> List["Disc"]:
         return [Disc(self.id, idx, self.bands) for idx in range(len(self._album_page.disc_names))]
 
-    @cached_property
-    def lineup(self) -> List["AlbumArtist"]:
-        return [AlbumArtist(url_to_id(a[0]), self.id, name=a[1], role=a[2]) for a in self._album_page.lineup]
+    def _get_artists_for_kind(self, kind: str) -> List["AlbumArtist"]:
+        return [AlbumArtist(url_to_id(a[0]), self.id, name=a[1], role=a[2]) for a in getattr(self._album_page, kind)]
 
     @cached_property
-    def total_time(self) -> timedelta:
-        return _turn_na_into_none(reduce(timedelta.__add__, [disc.total_time for disc in self.discs if disc.total_time], timedelta()))
+    def lineup(self) -> List["AlbumArtist"]:
+        return self._get_artists_for_kind("lineup")
+
+    @cached_property
+    def guest_session_musicians(self) -> List["AlbumArtist"]:
+        return self._get_artists_for_kind("guest_session_musicians")
+
+    @cached_property
+    def other_staff(self) -> List["AlbumArtist"]:
+        return self._get_artists_for_kind("other_staff")
+
+    @cached_property
+    def total_time(self) -> Optional[timedelta]:
+        return _turn_na_into_none(
+            reduce(timedelta.__add__, [disc.total_time for disc in self.discs if disc.total_time], timedelta()))
+
+    @cached_property
+    def additional_notes(self) -> str:
+        return self._album_page.additional_notes
 
 
 class Disc(DynamicEnmetEntity):
@@ -277,7 +301,7 @@ class Disc(DynamicEnmetEntity):
     def tracks(self) -> List["Track"]:
         tracks = []
         for t in self._album_page.tracks[self._number]:
-            tracks.append(Track(t[0], self._bands, t[1], t[2], _timestr_to_time(t[3]), t[4]))
+            tracks.append(Track(t[0], self._bands, int(t[1]), t[2], _timestr_to_time(t[3]), t[4]))
         return tracks
 
 
@@ -368,6 +392,34 @@ class Artist(EnmetEntity):
     @cached_property
     def trivia(self) -> str:
         return self._artist_page.trivia
+
+    def _get_bands(self, attrib: str) -> Dict[Band, List[Album]]:
+        data = getattr(self._artist_page, attrib)
+        result = {
+            Band(url_to_id(band[0]), name=band[1]) if band[0] else ExternalEntity(band[1], role=band[2]):
+                [Album(url_to_id(album[0]), name=album[1]) for album in data[band]]
+            for band in data}
+        return result
+
+    @cached_property
+    def active_bands(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
+        return self._get_bands("active_bands")
+
+    @cached_property
+    def past_bands(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
+        return self._get_bands("past_bands")
+
+    @cached_property
+    def guest_session(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
+        return self._get_bands("guest_session")
+
+    @cached_property
+    def misc_staff(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
+        return self._get_bands("misc_staff")
+
+    @cached_property
+    def links(self) -> List[Tuple[str, str]]:
+        return self._artist_page.links
 
 
 class EntityArtist(DynamicEnmetEntity, ABC):

@@ -5,7 +5,7 @@ from functools import cached_property, lru_cache
 from os.path import expandvars, expanduser
 from pathlib import Path
 from time import sleep
-from typing import List, Tuple, Union, Optional, Type
+from typing import List, Tuple, Union, Optional, Type, Dict
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag, ResultSet
@@ -322,7 +322,7 @@ class AlbumPage(_DataPage):
             return None, elem.text
 
     @cached_property
-    def tracks(self) -> List[List[Union[str, Optional[bool]]]]:
+    def tracks(self) -> List[List[Union[int, str, Optional[bool]]]]:
         result = [[]]
         for elem in self.enmet.select_one("#album_tabs_tracklist").select("tr.even,tr.odd,.discRow"):
             if "discRow" in elem["class"]:
@@ -333,7 +333,7 @@ class AlbumPage(_DataPage):
             result[-1].append([elem.select_one("td:nth-of-type(1) a")["name"]])
             # Number
             number = elem.select_one("td:nth-of-type(1)").text
-            result[-1][-1].append(int(number[:number.index(".")]))
+            result[-1][-1].append(number[:number.index(".")])
             # Name
             result[-1][-1].append(elem.select_one("td:nth-of-type(2)").text.strip())
             # Time
@@ -356,15 +356,30 @@ class AlbumPage(_DataPage):
     def total_times(self) -> List[Optional[str]]:
         return [e.text for e in self.enmet.select(".table_lyrics strong")] or [None]
 
-    @cached_property
-    def lineup(self):
+    def _get_people(self, group_id: str) -> List[List[str]]:
         result = []
-        for elem in self.enmet.select("#album_members_lineup tr.lineupRow"):
+        for elem in self.enmet.select(f"{group_id} tr.lineupRow"):
             # Artist URL, Artist
             result.append([elem.select_one("a")["href"], elem.select_one("a").text])
             # Role
             result[-1].append(elem.select_one("td:nth-child(2)").text.strip())
         return result
+
+    @cached_property
+    def lineup(self) -> List[List[str]]:
+        return self._get_people("#album_members_lineup")
+
+    @cached_property
+    def guest_session_musicians(self) -> List[List[str]]:
+        return self._get_people("#album_members_guest")
+
+    @cached_property
+    def other_staff(self) -> List[List[str]]:
+        return self._get_people("#album_members_misc")
+
+    @cached_property
+    def additional_notes(self) -> str:
+        return self.enmet.select_one("#album_tabs_notes").text.strip()
 
 
 class ArtistPage(_DataPage):
@@ -422,6 +437,70 @@ class ArtistPage(_DataPage):
     def trivia(self) -> Optional[str]:
         return self._get_extended_section("Trivia", _ArtistTriviaPage)
 
+    def _get_band_tab(self, tab: str) -> Dict[Tuple[str, ...], List[Tuple[str, ...]]]:
+        result = {}
+        # Process band sections
+        for section in self.enmet.select(tab + " div.member_in_band"):
+            band_url = band_name = band_role = name_in_lineup = None
+            # Band url and name
+            band = section.select_one(".member_in_band_name")
+            if band_data := band.select_one("a"):
+                band_url, band_name = band_data["href"], band_data.text
+            else:
+                band_name = band.text
+            # Role and name in lineup
+            band_member_data = section.select_one(".member_in_band_role").text.strip().replace("\n", " ")
+            name_in_lineup = self.name
+            if match := re.search(r"As (.+): (.+)", band_member_data, re.I):
+                band_role = match.group(2)
+                name_in_lineup = match.group(1)
+            else:
+                band_role = band_member_data
+            # Add band entry to results
+            key = band_url, band_name, band_role, name_in_lineup
+            result[key] = []
+            # Process rows in band section
+            for entry in section.select("table tr"):
+                if "show all" in entry.text:
+                    continue
+                album_url = album_name = album_role = name_on_album = None
+                # Album url and name
+                album = entry.select_one("td:nth-of-type(2)")
+                album_url, album_name = album.select_one("a")["href"], album.select_one("a").text
+                # Role and name on album
+                album_role = entry.select_one("td:nth-of-type(3)").text.strip()
+                name_on_album = name_in_lineup or self.name
+                if match := re.search(r'(.+) \(as "(.+)"\)', album_role, re.I):
+                    album_role, name_on_album = match.group(1), match.group(2)
+                # Add album entry for the band to results
+                result[key].append([album_url, album_name, album_role, name_on_album])
+        return result
+
+    @cached_property
+    def active_bands(self) -> Dict[Tuple[str, ...], List[Tuple[str, ...]]]:
+        return self._get_band_tab("#artist_tab_active")
+
+    @cached_property
+    def past_bands(self) -> Dict[Tuple[str, ...], List[Tuple[str, ...]]]:
+        return self._get_band_tab("#artist_tab_past")
+
+    @cached_property
+    def guest_session(self) -> Dict[Tuple[str, ...], List[Tuple[str, ...]]]:
+        return self._get_band_tab("#artist_tab_guest")
+
+    @cached_property
+    def misc_staff(self) -> Dict[Tuple[str, ...], List[Tuple[str, ...]]]:
+        return self._get_band_tab("#artist_tab_misc")
+
+    @cached_property
+    def links(self) -> List[Tuple[str, str]]:
+        data = _ArtistLinksPage(self.id).links
+        result = []
+        links = data.select("a")
+        for link in links:
+            result.append((link["href"], link.text))
+        return result
+
 
 class _ArtistBiographyPage(_DataPage):
     RESOURCE = "artist/read-more/id/{}"
@@ -437,6 +516,14 @@ class _ArtistTriviaPage(_DataPage):
     @cached_property
     def trivia(self) -> str:
         return self.enmet.text
+
+
+class _ArtistLinksPage(_DataPage):
+    RESOURCE = "link/ajax-list/type/person/id/{}"
+
+    @cached_property
+    def links(self) -> str:
+        return self.enmet
 
 
 class LyricsPage(_DataPage):

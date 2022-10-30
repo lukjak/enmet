@@ -46,7 +46,7 @@ Mind that currently only a part of data available is covered.
 There are 3 types of classes which present data in the same way, but differ a bit in handling:
 - EnmetEntity subclasses: they represent "native" Metal Archives objects - this means objects which have their own identifiers in Metal Archives. Examples of these subclasses are Artist, Band, Album, Track etc. All they have `id` property containing relevant identifier. 
 - DynamicEnmetEntity subclasses: they represent "dynamic" Metal Archives objects - entities, which don't have their identities in Metal Archives and thus no identifiers. Examples of these subclasses are `Disc` and `AlbumArtist`. Creation of these subclasses was necessary to preserve natural logic when manipulating entity objects; for example name of an album artist (represented by class `AlbumArtist`) stated on a physical media can be different from what appears on the artist's page in Metal Archives as name or full name.
-- ExternalEntity: objects of these class represent entities external to Metal Archives, for example non-metal artist of a collaboration album. The objects have just a single property `name`. These entities have no own data pages in MetalArchives, they are just mentioned by name.
+- ExternalEntity: objects of these class represent entities external to Metal Archives, for example non-metal artist of a collaboration album. The objects have the property `name` and other properties depending on concrete object purpose. These entities have no own data pages in MetalArchives, they are just mentioned by name.
 
 ### Creating objects
 
@@ -111,6 +111,9 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
     - `discs(self) -> List[Disc]`
     - `lineup(self) -> List[AlbumArtist]`
     - `total_time(self) -> timedelta`
+    - `guest_session_musicians(self) -> List["AlbumArtist"]`
+    - `other_staff(self) -> List["AlbumArtist"]`
+    - `additional_notes(self) -> str`
 - `AlbumArtist(_EntityArtist)`. This class represent an artist performing on a specific album.
   - `__init__(self, id_: str, album_id: str, *, name: str = None, role: str = None)`. `id_` is the artist's identifier in Metal Archives. `album_id` is an album's identifier. `name` is the artist's name as stated on the album. `role` is the artist's role on the album.
   - Attributes and properties:
@@ -129,6 +132,11 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
     - `gender(self) -> str`
     - `biography(self) -> str`
     - `trivia(self) -> str`
+    - `active_bands(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
+    - `past_bands(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
+    - `guest_session(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
+    - `misc_staff(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
+    - `links(self) -> List[Tuple[str, str]]`
 - `Band(EnmetEntity)`. This class represents a band.
   - `__init__(self, id_: str, *, name: str = None, country: Countries = None)`. `id_` is the band's identifier in Metal Archives. `name` is the band's name as stated on the band's page. `country` is the band's country of origin.
   - Attributes and properties:
@@ -227,7 +235,7 @@ There are two object layers used:
     1. Subclasses of `SearchResultPage(Page)` represent responses to search HTTP requests. They have a single property that returns a list, where each list element is a tuple of simple data pertaining to a single found entity (`List[Tuple[str, ...]]`) - for example a list where each element is (band name, band country, formation year) tuple. These subclasses process JSON returned by requests sent to search resources.
     2. Subclasses of `DataPage(Page)` represent responses to entity HTTP requests. Sometimes a `DataPage` subclass represents just what can be seen in a browser for an entity, but most of the time there is no 1:1 correspondence between what a user sees in a browser and some `DataPage` subclass. These subclasses have multiple properties that make available different pieces of data found on the corresponding webpages. `_CachedSite` descriptor in `_DataPage` class returns BeautifulSoup objects for requests, thus data extraction in `_DataPage` subclasses is done with CSS selectors. 
 2. Concrete subclassess of `Entity` class represent items like band, album or track. They use `DataPage` objects and other `Entity` objects to present full entity via properties. There are 3 types of `Entity` subclasses:
-   1. Class `ExternalEntity` represents entity from outside of The Metal Archives (without MA id), like non-metal musician without MA page participating in a release. This class has single property `name`, which provides simple textual information about the entity.
+   1. Class `ExternalEntity` represents entity from outside of The Metal Archives (without MA id), like non-metal musician without MA page participating in a release. This class has property `name`, which provides simple textual information about the entity, and other properties depending on what the object represents.
    2. Class `EnmetEntity` represents Metal Archives entity which has its own id (like band).
    3. Class `DynamicEnmetEntity` represents Metal Archives entity without own identity (id). Using this class was necessary in order to be able all availabe information in consistent and logical manner.
 
