@@ -7,9 +7,9 @@ import pytest
 from bs4 import BeautifulSoup
 
 from enmet import set_session_cache, search_bands, Artist, PartialDate, Band, Countries, search_albums, ReleaseTypes, \
-    Album, Track, EnmetEntity
+    Album, Track, EnmetEntity, ExternalEntity
 from enmet.common import datestr_to_date
-from enmet.pages import _CachedSite
+from enmet.pages import _CachedSite, ArtistPage
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -68,6 +68,13 @@ def test_band_no_formed_in_no_biography():
     # assert b.lineup[1].biography is None  # no Trivia or Biography section
 
 
+def test_band_no_similar_artists():
+    # given
+    band = Band("32039")
+    # then
+    assert band.similar_artists == []
+
+
 def test_artist():
     # given
     a = Artist(184)
@@ -77,7 +84,15 @@ def test_artist():
     assert a.gender == "Male"
     assert a.biography.startswith("Mustaine was born in La Mesa")
     assert a.trivia.startswith("Dave performed alongside Dream Theater")
-    assert set(dir(a)) == {'age', 'biography', 'gender', 'name', 'place_of_birth', 'real_full_name', 'trivia'}
+    assert set(dir(a)) == {'active_bands', 'age', 'biography', 'gender', 'guest_session', 'links', 'misc_staff', 'name',
+                           'past_bands', 'place_of_birth', 'real_full_name', 'trivia'}
+    assert list(a.active_bands.keys()) == [Band(138)]
+    assert set(a.past_bands) == {Band(3540464105), Band(4984), Band(125), Band(3540461857),
+                                 ExternalEntity("Fallen Angels", role="Vocals, Guitars (1983)"), ExternalEntity("Panic", role="Guitars (?-1981)")}
+    assert set(a.guest_session) == {Band(401), Band(37), Band(706), Band(343)}
+    assert set(a.misc_staff) == {Band(138), Band(4984), Band(125), Band(3540461857), Band(401), Band(343), Band(25),
+                                 Band(1831)}
+    assert len(a.links) == 10
 
 
 def test_artist_two_extended_sections_first_no_read_more():
@@ -93,6 +108,15 @@ def test_artist_less_extras():
     # then
     assert a.trivia.startswith("DiSanto was arrested")
     assert a.biography is None
+
+
+def test_ArtistPage_with_band_and_album_alias():
+    # given
+    a = ArtistPage(15954)
+    # then
+    assert [key[3] for key in a.past_bands if key[0] and "/510#" in key[0]][0] == "John Syriis"
+    albums = [v for v in a.active_bands.values() if len(v) > 5][0]
+    assert [key[3] for key in albums if "No Other Godz Before Me" in key[1]][0] == "Johnny Cyriis"
 
 
 def test_band_splitup():
@@ -133,12 +157,18 @@ def test_album():
     assert album.discs[0].number == 1
     assert album.discs[0].tracks[0].band is Band("198")
     assert album.year == 1985
-    assert dir(album) == ['bands', 'catalog_id', 'discs', 'format', 'label', 'lineup', 'name', 'release_date',
-                          'reviews', 'total_time', 'type', 'year']
-    assert set(dir(album.lineup[0])) == {'album', 'name', 'name_on_album', 'real_full_name', 'role', 'age', 'biography',
-                                         'gender', 'place_of_birth', 'trivia'}
+    assert len(album.other_staff) == 8
+    assert album.additional_notes.startswith("Trivia")
+    assert set(dir(album)) == {'additional_notes', 'bands', 'catalog_id', 'discs', 'format', 'guest_session_musicians',
+                               'label', 'lineup', 'name', 'other_staff', 'release_date', 'reviews', 'total_time',
+                               'type', 'year'}
+    assert set(dir(album.lineup[0])) == {'active_bands', 'age', 'album', 'biography', 'gender', 'guest_session',
+                                         'links', 'misc_staff', 'name', 'name_on_album', 'past_bands', 'place_of_birth',
+                                         'real_full_name', 'role', 'trivia'}
     assert dir(album.discs[0]) == ['name', 'number', 'total_time', 'tracks']
     assert dir(album.discs[0].tracks[0]) == ['band', 'lyrics', 'name', 'number', 'time']
+    assert "AlbumArtist" in repr(album.lineup[0])
+    assert str(album.lineup[0]) == "Udo Dirkschneider"
 
 
 def test_search_albums_with_years(mocker):
@@ -182,6 +212,11 @@ def test_album_named_discs():
     album = Album("534606")
     assert album.name == "Songs from the North I, II & III"
     assert [disc.name for disc in album.discs] == ["Gloom", "Beauty", "Despair"]
+
+
+def test_album_session_musicians():
+    album = Album("534606")
+    assert len(album.guest_session_musicians) == 5
 
 
 def test_album_split():
@@ -332,3 +367,11 @@ def test_create_default_cache(mocker):
     assert result == BeautifulSoup("<html />", features="html.parser")
     assert cp_mock.method_calls == [call.mkdir(parents=True, exist_ok=True)]
     assert call(cache_name=ANY, backend="sqlite") in cs_mock.mock_calls
+
+
+def test_ExternalEntity_dir():
+    # given
+    ee = ExternalEntity("abc", data=123)
+    # then
+    assert set(dir(ee)) == {"name", "data"}
+

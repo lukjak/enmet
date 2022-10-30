@@ -64,6 +64,12 @@ class ExternalEntity(Entity):
     def __dir__(self) -> Iterable[str]:
         return vars(self)
 
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __hash__(self):
+        return hash(tuple(sorted((k, getattr(self, k)) for k in vars(self))))
+
 
 class EnmetEntity(Entity, CachedInstance, ABC):
     def __init__(self, id_):

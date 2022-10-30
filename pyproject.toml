@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "enmet"
-version = "0.4.1"
+version = "0.5.0b"
 description = "Python API for Encyclopaedia Metallum (The Metal Archives) website."
 readme = {text = """
 Enmet is a programmatic API to Encyclopaedia Metallum - The Metal Archives site. It allows convenient access to Metal Archives data from python code.

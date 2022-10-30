@@ -494,8 +494,9 @@ class ArtistPage(_DataPage):
 
     @cached_property
     def links(self) -> List[Tuple[str, str]]:
+        data = _ArtistLinksPage(self.id).links
         result = []
-        links = self.enmet.select("#linksTablemain a")
+        links = data.select("a")
         for link in links:
             result.append((link["href"], link.text))
         return result
@@ -515,6 +516,14 @@ class _ArtistTriviaPage(_DataPage):
     @cached_property
     def trivia(self) -> str:
         return self.enmet.text
+
+
+class _ArtistLinksPage(_DataPage):
+    RESOURCE = "link/ajax-list/type/person/id/{}"
+
+    @cached_property
+    def links(self) -> str:
+        return self.enmet
 
 
 class LyricsPage(_DataPage):
