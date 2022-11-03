@@ -259,6 +259,34 @@ class _BandInfoPage(_DataPage):
         return self.enmet.text
 
 
+class BandLinksPage(_DataPage):
+    RESOURCE = "link/ajax-list/type/band/id/{}"
+
+    def _get_links(self, kind: str) -> List[Tuple[str, str]]:
+        data = self.enmet.select_one(f"#{kind}").select("a")
+        return [(item["href"], item.text) for item in data]
+
+    @cached_property
+    def links_official(self) -> List[Tuple[str, str]]:
+        return self._get_links("band_links_Official")
+
+    @cached_property
+    def links_official_merchandise(self) -> List[Tuple[str, str]]:
+        return self._get_links("band_links_Official_merchandise")
+
+    @cached_property
+    def links_unofficial(self) -> List[Tuple[str, str]]:
+        return self._get_links("band_links_Unofficial")
+
+    @cached_property
+    def links_labels(self) -> List[Tuple[str, str]]:
+        return self._get_links("band_links_Labels")
+
+    @cached_property
+    def links_tabulatures(self) -> List[Tuple[str, str]]:
+        return self._get_links("band_links_Tablatures")
+
+
 class BandRecommendationsPage(_DataPage):
     RESOURCE = "band/ajax-recommendations/id/{}/showMoreSimilar/1"
 
@@ -494,9 +522,8 @@ class ArtistPage(_DataPage):
 
     @cached_property
     def links(self) -> List[Tuple[str, str]]:
-        data = _ArtistLinksPage(self.id).links
+        links = _ArtistLinksPage(self.id).links
         result = []
-        links = data.select("a")
         for link in links:
             result.append((link["href"], link.text))
         return result
@@ -522,8 +549,8 @@ class _ArtistLinksPage(_DataPage):
     RESOURCE = "link/ajax-list/type/person/id/{}"
 
     @cached_property
-    def links(self) -> str:
-        return self.enmet
+    def links(self) -> List[Tag]:
+        return self.enmet.select("a")
 
 
 class LyricsPage(_DataPage):

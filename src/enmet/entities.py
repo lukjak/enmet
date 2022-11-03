@@ -7,7 +7,7 @@ from typing import List, Iterable, Optional, Tuple, Union, Dict
 
 from .countries import Countries, country_to_enum_name
 from .common import CachedInstance, ReleaseTypes, url_to_id, datestr_to_date, PartialDate
-from .pages import BandPage, DiscographyPage, BandRecommendationsPage, AlbumPage, LyricsPage, ArtistPage
+from .pages import BandPage, DiscographyPage, BandRecommendationsPage, AlbumPage, LyricsPage, ArtistPage, BandLinksPage
 
 __all__ = ["ReleaseTypes", "Entity", "ExternalEntity", "EnmetEntity",
            "DynamicEnmetEntity", "Band", "Album", "Disc", "Track", "Artist", "EntityArtist", "LineupArtist",
@@ -100,6 +100,7 @@ class Band(EnmetEntity):
                 setattr(self, "genres", genres)
             self._band_page = BandPage(self.id)
             self._albums_page = DiscographyPage(self.id)
+            self._links_page = BandLinksPage(self.id)
 
     def __str__(self):
         return f"{self.name} ({self.country})"
@@ -178,6 +179,26 @@ class Band(EnmetEntity):
                                                            data).groups()
         return datetime(year=int(year), month=int(month), day=int(day), hour=int(hour), minute=int(minute),
                         second=int(second))
+
+    @cached_property
+    def links_official(self) -> List[Tuple[str, str]]:
+        return self._links_page.links_official
+
+    @cached_property
+    def links_official_merchandise(self) -> List[Tuple[str, str]]:
+        return self._links_page.links_official_merchandise
+
+    @cached_property
+    def links_unofficial(self) -> List[Tuple[str, str]]:
+        return self._links_page.links_unofficial
+
+    @cached_property
+    def links_labels(self) -> List[Tuple[str, str]]:
+        return self._links_page.links_labels
+
+    @cached_property
+    def links_tabulatures(self) -> List[Tuple[str, str]]:
+        return self._links_page.links_tabulatures
 
 
 class SimilarBand(DynamicEnmetEntity):
