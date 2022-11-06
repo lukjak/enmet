@@ -22,6 +22,13 @@ def _timestr_to_time(time_string: str) -> Optional[timedelta]:
     return timedelta(**data)
 
 
+def _timestamp_to_time(time_string: str) -> datetime:
+    year, month, day, hour, minute, second = re.search(r"(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})",
+                                                       time_string).groups()
+    return datetime(year=int(year), month=int(month), day=int(day), hour=int(hour), minute=int(minute),
+                    second=int(second))
+
+
 def _discstr_to_name(name: Optional[str]) -> Optional[str]:
     """Determine disc name (if any) from header item of track list (like "Disc 1 - Gloom")."""
     if name and "- " in name:
@@ -175,10 +182,7 @@ class Band(EnmetEntity):
     @cached_property
     def last_modified(self) -> datetime:
         data = self._band_page.last_modified
-        year, month, day, hour, minute, second = re.search(r"(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})",
-                                                           data).groups()
-        return datetime(year=int(year), month=int(month), day=int(day), hour=int(hour), minute=int(minute),
-                        second=int(second))
+        return _timestamp_to_time(data)
 
     @cached_property
     def links_official(self) -> List[Tuple[str, str]]:
@@ -298,6 +302,11 @@ class Album(EnmetEntity):
     @cached_property
     def additional_notes(self) -> str:
         return self._album_page.additional_notes
+
+    @cached_property
+    def last_modified(self) -> datetime:
+        data = self._album_page.last_modified
+        return _timestamp_to_time(data)
 
 
 class Disc(DynamicEnmetEntity):
@@ -441,6 +450,11 @@ class Artist(EnmetEntity):
     @cached_property
     def links(self) -> List[Tuple[str, str]]:
         return self._artist_page.links
+
+    @cached_property
+    def last_modified(self) -> datetime:
+        data = self._artist_page.last_modified
+        return _timestamp_to_time(data)
 
 
 class EntityArtist(DynamicEnmetEntity, ABC):

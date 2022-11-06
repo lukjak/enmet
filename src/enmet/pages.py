@@ -409,6 +409,10 @@ class AlbumPage(_DataPage):
     def additional_notes(self) -> str:
         return self.enmet.select_one("#album_tabs_notes").text.strip()
 
+    @cached_property
+    def last_modified(self) -> str:
+        return self.enmet.find("td", string=re.compile("Last modified on")).text
+
 
 class ArtistPage(_DataPage):
     RESOURCE = "artists/_/{}"
@@ -527,6 +531,11 @@ class ArtistPage(_DataPage):
         for link in links:
             result.append((link["href"], link.text))
         return result
+
+    @cached_property
+    def last_modified(self) -> str:
+        return self.enmet.find("td", string=re.compile("Last modified on")).text
+
 
 
 class _ArtistBiographyPage(_DataPage):
