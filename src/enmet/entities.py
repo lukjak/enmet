@@ -7,7 +7,8 @@ from typing import List, Iterable, Optional, Tuple, Union, Dict
 
 from .countries import Countries, country_to_enum_name
 from .common import CachedInstance, ReleaseTypes, url_to_id, datestr_to_date, PartialDate
-from .pages import BandPage, DiscographyPage, BandRecommendationsPage, AlbumPage, LyricsPage, ArtistPage, BandLinksPage
+from .pages import BandPage, DiscographyPage, BandRecommendationsPage, AlbumPage, LyricsPage, ArtistPage, BandLinksPage, \
+    ArtistLinksPage, AlbumVersionsPage
 
 __all__ = ["ReleaseTypes", "Entity", "ExternalEntity", "EnmetEntity",
            "DynamicEnmetEntity", "Band", "Album", "Disc", "Track", "Artist", "EntityArtist", "LineupArtist",
@@ -23,6 +24,7 @@ def _timestr_to_time(time_string: str) -> Optional[timedelta]:
 
 
 def _timestamp_to_time(time_string: str) -> datetime:
+    """Convert page update time ("Last modified on: 2022-10-31 13:07:05") to datetime."""
     year, month, day, hour, minute, second = re.search(r"(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})",
                                                        time_string).groups()
     return datetime(year=int(year), month=int(month), day=int(day), hour=int(hour), minute=int(minute),
@@ -308,6 +310,11 @@ class Album(EnmetEntity):
         data = self._album_page.last_modified
         return _timestamp_to_time(data)
 
+    @cached_property
+    def other_versions(self) -> List["Album"]:
+        data = AlbumVersionsPage(self.id).other_versions
+        return [Album(url_to_id(item[0])) for item in data]
+
 
 class Disc(DynamicEnmetEntity):
     def __init__(self, album_id: str, number: int = 0, bands: List[Band] = None):
@@ -449,7 +456,7 @@ class Artist(EnmetEntity):
 
     @cached_property
     def links(self) -> List[Tuple[str, str]]:
-        return self._artist_page.links
+        return ArtistLinksPage(self.id).links
 
     @cached_property
     def last_modified(self) -> datetime:

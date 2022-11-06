@@ -130,7 +130,7 @@ class _CachedSite:
         if self._session is None:  # Lazy session creation to enable setting cache before it is accessed.
             self._CACHE_PATH.mkdir(parents=True, exist_ok=True)
             self.set_session()
-        resource = instance.RESOURCE.format(instance.id)
+        resource = instance.RESOURCE.format(instance.id, instance.id)
         return self._cached_get(resource)
 
 
@@ -414,6 +414,15 @@ class AlbumPage(_DataPage):
         return self.enmet.find("td", string=re.compile("Last modified on")).text
 
 
+class AlbumVersionsPage(_DataPage):
+    RESOURCE = "release/ajax-versions/current/{}/parent/{}"
+
+    @cached_property
+    def other_versions(self):
+        data = self.enmet.select("td a")
+        return [(item["href"], item.text) for item in data]
+
+
 class ArtistPage(_DataPage):
     RESOURCE = "artists/_/{}"
 
@@ -445,12 +454,12 @@ class ArtistPage(_DataPage):
             has_readme = False
             idx = 0
             for idx, elem in enumerate(top.contents[idx_caption+1:]):
-                if not isinstance(elem, Tag):
+                if not isinstance(elem, Tag):  # Skip NavigableText
                     continue
                 elif elem.text == "Read more":
                     has_readme = True
                     break
-                elif elem.name == "h2":
+                elif elem.name == "h2":  # Start of next extended section
                     break
             else:
                 idx += 1
@@ -525,14 +534,6 @@ class ArtistPage(_DataPage):
         return self._get_band_tab("#artist_tab_misc")
 
     @cached_property
-    def links(self) -> List[Tuple[str, str]]:
-        links = _ArtistLinksPage(self.id).links
-        result = []
-        for link in links:
-            result.append((link["href"], link.text))
-        return result
-
-    @cached_property
     def last_modified(self) -> str:
         return self.enmet.find("td", string=re.compile("Last modified on")).text
 
@@ -554,12 +555,16 @@ class _ArtistTriviaPage(_DataPage):
         return self.enmet.text
 
 
-class _ArtistLinksPage(_DataPage):
+class ArtistLinksPage(_DataPage):
     RESOURCE = "link/ajax-list/type/person/id/{}"
 
     @cached_property
-    def links(self) -> List[Tag]:
-        return self.enmet.select("a")
+    def links(self) -> List[Tuple[str, str]]:
+        links = self.enmet.select("a")
+        result = []
+        for link in links:
+            result.append((link["href"], link.text))
+        return result
 
 
 class LyricsPage(_DataPage):
