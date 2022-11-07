@@ -7,7 +7,7 @@ import pytest
 from bs4 import BeautifulSoup
 
 from enmet import set_session_cache, search_bands, Artist, PartialDate, Band, Countries, search_albums, ReleaseTypes, \
-    Album, Track, EnmetEntity, ExternalEntity
+    Album, Track, EnmetEntity, ExternalEntity, random_band
 from enmet.common import datestr_to_date
 from enmet.pages import _CachedSite, ArtistPage
 
@@ -44,7 +44,8 @@ def test_band():
     assert repr(band.discography[0].discs[0]) == "<Disc: None>"
     assert set(dir(band)) == {'country', 'discography', 'formed_in', 'genres', 'info', 'label', 'last_modified',
                               'lineup', 'live_musicians', 'location', 'lyrical_themes', 'name', 'past_members',
-                              'similar_artists', 'status', 'years_active'}
+                              'similar_artists', 'status', 'years_active', 'links_labels', 'links_official',
+                              'links_official_merchandise', 'links_tabulatures', 'links_unofficial', }
     # similar_artists
     assert len(band.similar_artists) > 180
     assert band.similar_artists[0].score > 490
@@ -54,9 +55,16 @@ def test_band():
     assert set(dir(band.similar_artists[0])) == {'country', 'discography', 'formed_in', 'genres', 'info', 'label',
                                                  'last_modified', 'lineup', 'live_musicians', 'location',
                                                  'lyrical_themes', 'name', 'past_members', 'score', 'similar_artists',
-                                                 'similar_to', 'status', 'years_active'}
+                                                 'similar_to', 'status', 'years_active', 'links_labels',
+                                                 'links_official', 'links_official_merchandise', 'links_tabulatures',
+                                                 'links_unofficial', }
     assert band.info.startswith("Pictured from left to right")
     assert band.last_modified >= datetime(2022, 10, 10, 15, 58, 54)
+    assert len(band.links_tabulatures) > 5
+    assert len(band.links_unofficial) > 3
+    assert len(band.links_labels) == 0
+    assert len(band.links_official_merchandise) > 5
+    assert len(band.links_official) > 5
 
 
 def test_band_no_formed_in_no_biography():
@@ -75,6 +83,11 @@ def test_band_no_similar_artists():
     assert band.similar_artists == []
 
 
+def test_band_links_labels():
+    # then
+    assert len(Band(11949).links_labels) > 1
+
+
 def test_artist():
     # given
     a = Artist(184)
@@ -85,7 +98,7 @@ def test_artist():
     assert a.biography.startswith("Mustaine was born in La Mesa")
     assert a.trivia.startswith("Dave performed alongside Dream Theater")
     assert set(dir(a)) == {'active_bands', 'age', 'biography', 'gender', 'guest_session', 'links', 'misc_staff', 'name',
-                           'past_bands', 'place_of_birth', 'real_full_name', 'trivia'}
+                           'past_bands', 'place_of_birth', 'real_full_name', 'trivia', 'last_modified'}
     assert list(a.active_bands.keys()) == [Band(138)]
     assert set(a.past_bands) == {Band(3540464105), Band(4984), Band(125), Band(3540461857),
                                  ExternalEntity("Fallen Angels", role="Vocals, Guitars (1983)"), ExternalEntity("Panic", role="Guitars (?-1981)")}
@@ -93,6 +106,7 @@ def test_artist():
     assert set(a.misc_staff) == {Band(138), Band(4984), Band(125), Band(3540461857), Band(401), Band(343), Band(25),
                                  Band(1831)}
     assert len(a.links) == 10
+    assert isinstance(a.last_modified, datetime)
 
 
 def test_artist_two_extended_sections_first_no_read_more():
@@ -161,14 +175,16 @@ def test_album():
     assert album.additional_notes.startswith("Trivia")
     assert set(dir(album)) == {'additional_notes', 'bands', 'catalog_id', 'discs', 'format', 'guest_session_musicians',
                                'label', 'lineup', 'name', 'other_staff', 'release_date', 'reviews', 'total_time',
-                               'type', 'year'}
+                               'type', 'year', 'other_versions', 'last_modified'}
     assert set(dir(album.lineup[0])) == {'active_bands', 'age', 'album', 'biography', 'gender', 'guest_session',
                                          'links', 'misc_staff', 'name', 'name_on_album', 'past_bands', 'place_of_birth',
-                                         'real_full_name', 'role', 'trivia'}
+                                         'real_full_name', 'role', 'trivia', 'last_modified'}
     assert dir(album.discs[0]) == ['name', 'number', 'total_time', 'tracks']
     assert dir(album.discs[0].tracks[0]) == ['band', 'lyrics', 'name', 'number', 'time']
     assert "AlbumArtist" in repr(album.lineup[0])
     assert str(album.lineup[0]) == "Udo Dirkschneider"
+    assert len(album.other_versions) > 20
+    assert isinstance(album.last_modified, datetime)
 
 
 def test_search_albums_with_years(mocker):
@@ -375,3 +391,7 @@ def test_ExternalEntity_dir():
     # then
     assert set(dir(ee)) == {"name", "data"}
 
+
+def test_random_band():
+    # then
+    assert isinstance(random_band(), Band)

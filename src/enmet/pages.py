@@ -263,8 +263,11 @@ class BandLinksPage(_DataPage):
     RESOURCE = "link/ajax-list/type/band/id/{}"
 
     def _get_links(self, kind: str) -> List[Tuple[str, str]]:
-        data = self.enmet.select_one(f"#{kind}").select("a")
-        return [(item["href"], item.text) for item in data]
+        data = self.enmet.select_one(f"#{kind}")
+        if data is None:
+            return []
+        else:
+            return [(item["href"], item.text) for item in data.select("a")]
 
     @cached_property
     def links_official(self) -> List[Tuple[str, str]]:
