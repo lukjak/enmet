@@ -6,7 +6,7 @@ from inspect import getmembers
 from typing import List, Iterable, Optional, Tuple, Union, Dict
 
 from .countries import Countries, country_to_enum_name
-from .common import CachedInstance, ReleaseTypes, url_to_id, datestr_to_date, PartialDate
+from .common import CachedInstance, ReleaseTypes, url_to_id, datestr_to_date, PartialDate, BandStatuses
 from .pages import BandPage, DiscographyPage, BandRecommendationsPage, AlbumPage, LyricsPage, ArtistPage, BandLinksPage, \
     ArtistLinksPage, AlbumVersionsPage
 
@@ -141,8 +141,9 @@ class Band(EnmetEntity):
         return self._band_page.genres
 
     @cached_property
-    def status(self) -> Optional[str]:
-        return self._band_page.status
+    def status(self) -> Optional[BandStatuses]:
+        data = self._band_page.status
+        return None if data is None else BandStatuses(data)
 
     @cached_property
     def lyrical_themes(self) -> Optional[List[str]]:
@@ -430,28 +431,28 @@ class Artist(EnmetEntity):
     def trivia(self) -> str:
         return self._artist_page.trivia
 
-    def _get_bands(self, attrib: str) -> Dict[Band, List[Album]]:
+    def _get_bands(self, attrib: str) -> Dict["LineupArtist", List["AlbumArtist"]]:
         data = getattr(self._artist_page, attrib)
         result = {
-            Band(url_to_id(band[0]), name=band[1]) if band[0] else ExternalEntity(band[1], role=band[2]):
-                [Album(url_to_id(album[0]), name=album[1]) for album in data[band]]
+            LineupArtist(self.id, url_to_id(band[0]), name=band[3], role=band[2], ) if band[0] else ExternalEntity(band[1], role=band[2]):
+                [AlbumArtist(self.id, url_to_id(album[0]), name=album[3], role=album[2]) for album in data[band]]
             for band in data}
         return result
 
     @cached_property
-    def active_bands(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
+    def active_bands(self) -> Dict[Union[Band, "LineupArtist"], List["AlbumArtist"]]:
         return self._get_bands("active_bands")
 
     @cached_property
-    def past_bands(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
+    def past_bands(self) -> Dict[Union[Band, "LineupArtist"], List["AlbumArtist"]]:
         return self._get_bands("past_bands")
 
     @cached_property
-    def guest_session(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
+    def guest_session(self) -> Dict[Union[Band, "LineupArtist"], List["AlbumArtist"]]:
         return self._get_bands("guest_session")
 
     @cached_property
-    def misc_staff(self) -> Dict[Union[Band, ExternalEntity], List[Album]]:
+    def misc_staff(self) -> Dict[Union[Band, "LineupArtist"], List["AlbumArtist"]]:
         return self._get_bands("misc_staff")
 
     @cached_property
@@ -481,7 +482,7 @@ class EntityArtist(DynamicEnmetEntity, ABC):
 class LineupArtist(EntityArtist):
     """Artist in the current band lineup"""
 
-    def __init__(self, id_: str, band_id: str, name=None, role=None):
+    def __init__(self, id_: str, band_id: str, name: str = None, role: str = None):
         super().__init__(id_, role)
         self.name_in_lineup = name
         self.band = Band(band_id)

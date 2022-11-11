@@ -4,7 +4,7 @@ from pathlib import PurePath
 from urllib.parse import urlparse
 from weakref import WeakValueDictionary
 
-__all__ = ["ReleaseTypes", "PartialDate"]
+__all__ = ["ReleaseTypes", "PartialDate", "BandStatuses"]
 
 _logger = logging.getLogger(__file__)
 
@@ -89,3 +89,12 @@ class ReleaseTypes(Enum):
     COMPILATION = "Compilation"
     SPLIT_VIDEO = "Split video"
     COLLABORATION = "Collaboration"
+
+
+class BandStatuses(Enum):
+    ACTIVE = "Active"
+    ON_HOLD = "On hold"
+    SPLIT_UP = "Split-up"
+    UNKNOWN = "Unknown"
+    CHANGED_NAME = "Changed name"
+    DISPUTED = "Disputed"
