@@ -1,6 +1,7 @@
 import logging
 from enum import Enum
 from pathlib import PurePath
+from typing import Optional
 from urllib.parse import urlparse
 from weakref import WeakValueDictionary
 
@@ -9,10 +10,13 @@ __all__ = ["ReleaseTypes", "PartialDate", "BandStatuses"]
 _logger = logging.getLogger(__file__)
 
 
-def url_to_id(url: str) -> str:
+def url_to_id(url: str) -> Optional[str]:
     """Extract id from URL, if id is the last part of path: http://host.com/path/more_path/id?param=value."""
     _, _, path, *_ = urlparse(url)
-    return PurePath(path).name
+    if not path:
+        return None
+    else:
+        return PurePath(path).name
 
 
 class PartialDate:

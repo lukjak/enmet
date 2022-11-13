@@ -453,8 +453,9 @@ class Artist(EnmetEntity):
     def _get_bands(self, attrib: str) -> Dict["LineupArtist", List["AlbumArtist"]]:
         data = getattr(self._artist_page, attrib)
         result = {
-            LineupArtist(self.id, url_to_id(band[0]), band[1], name=band[3], role=band[2], ) if band[0] else ExternalEntity(band[1], role=band[2]):
-                [AlbumArtist(self.id, url_to_id(album[0]), album_name= album[1], name=album[3], role=album[2]) for album in data[band]]
+            LineupArtist(self.id, url_to_id(band[0]), band[1], name=band[3], role=band[2]):
+                [AlbumArtist(self.id, url_to_id(album[0]), album_name=album[1], name=album[3], role=album[2]) for album
+                 in data[band]]
             for band in data}
         return result
 
@@ -503,10 +504,6 @@ class EntityArtist(DynamicEnmetEntity, ABC):
     def __eq__(self, other):
         return hash(self) == hash(other)
 
-    @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return args[0], args[1]
-
 
 class LineupArtist(EntityArtist):
     """Artist in the current band lineup"""
@@ -514,7 +511,10 @@ class LineupArtist(EntityArtist):
     def __init__(self, id_: str, band_id: str, band_name: str, name: str = None, role: str = None):
         super().__init__(id_, role)
         self.name_in_lineup = name or self.name
-        self.band = Band(band_id, name=band_name)
+        if band_id is None:
+            self.band = ExternalEntity(band_name)
+        else:
+            self.band = Band(band_id, name=band_name)
 
     def __dir__(self) -> Iterable[str]:
         return super().__dir__() + ["name_in_lineup", "band"]
@@ -526,7 +526,11 @@ class LineupArtist(EntityArtist):
         return f"{self.name_in_lineup} ({self.band.name})"
 
     def __hash__(self):
-        return hash((super().__hash__(), self.band.id))
+        return hash((super().__hash__(), self.band.id if isinstance(self.band, EnmetEntity) else self.band.name))
+
+    @staticmethod
+    def hash(*args, **kwargs) -> Tuple:
+        return args[0], args[1] if args[1] else args[2]
 
 
 class AlbumArtist(EntityArtist):
@@ -548,3 +552,7 @@ class AlbumArtist(EntityArtist):
 
     def __hash__(self):
         return hash((super().__hash__(), self.album.id))
+
+    @staticmethod
+    def hash(*args, **kwargs) -> Tuple:
+        return args[0], args[1]
