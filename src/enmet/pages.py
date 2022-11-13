@@ -149,6 +149,10 @@ class _DataPage(_Page, CachedInstance, ABC):
     def set_session_cache(**kwargs) -> CachedSession:
         return _DataPage.enmet.set_session(**kwargs)
 
+    @staticmethod
+    def hash(*args, **kwargs) -> Tuple:
+        return args[0],
+
 
 class DiscographyPage(_DataPage):
     RESOURCE = "band/discography/id/{}/tab/all"

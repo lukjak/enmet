@@ -1,5 +1,5 @@
 import re
-from abc import ABC
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from functools import cached_property, reduce
 from inspect import getmembers
@@ -50,13 +50,18 @@ def _turn_na_into_none(data: Union[str, List, timedelta]) -> Union[List, None, s
         return data
 
 
-class Entity(ABC):
+class Entity(ABC, CachedInstance):
     """A thing, like band or album"""
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.name}>"
 
     def __dir__(self) -> List[str]:
         return [p[0] for p in getmembers(self.__class__) if type(p[1]) is cached_property]
+
+    @staticmethod
+    @abstractmethod
+    def hash(*args, **kwargs) -> Tuple:
+        pass
 
 
 class ExternalEntity(Entity):
@@ -79,8 +84,12 @@ class ExternalEntity(Entity):
     def __hash__(self):
         return hash(tuple(sorted((k, getattr(self, k)) for k in vars(self))))
 
+    @staticmethod
+    def hash(*args, **kwargs) -> Tuple:
+        return tuple(sorted(a for a in args) + sorted(f"{k}={v}" for k, v in kwargs.items()))
 
-class EnmetEntity(Entity, CachedInstance, ABC):
+
+class EnmetEntity(Entity, ABC):
     def __init__(self, id_):
         id_ = str(id_)
         if not hasattr(self, "id"):
@@ -89,11 +98,13 @@ class EnmetEntity(Entity, CachedInstance, ABC):
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.name} ({self.id})>"
 
+    @staticmethod
+    def hash(*args, **kwargs) -> Tuple:
+        return args[0],
+
 
 class DynamicEnmetEntity(Entity, ABC):
     """Represents entities without its own identity in Enmet, for example disc of an album"""
-    def __str__(self):
-        return self.name
 
 
 class Band(EnmetEntity):
@@ -156,17 +167,17 @@ class Band(EnmetEntity):
     @cached_property
     def lineup(self) -> List["LineupArtist"]:
         data = self._band_page.lineup
-        return [LineupArtist(url_to_id(a[0]), self.id, a[1], a[2]) for a in data]
+        return [LineupArtist(url_to_id(a[0]), self.id, self.name, a[1], a[2]) for a in data]
 
     @cached_property
     def past_members(self) -> List["LineupArtist"]:
         data = self._band_page.past_members
-        return [LineupArtist(url_to_id(a[0]), self.id, a[1], a[2]) for a in data]
+        return [LineupArtist(url_to_id(a[0]), self.id, self.name, a[1], a[2]) for a in data]
 
     @cached_property
     def live_musicians(self) -> List["LineupArtist"]:
         data = self._band_page.live_musicians
-        return [LineupArtist(url_to_id(a[0]), self.id, a[1], a[2]) for a in data]
+        return [LineupArtist(url_to_id(a[0]), self.id, self.name, a[1], a[2]) for a in data]
 
     @cached_property
     def discography(self) -> List["Album"]:
@@ -223,6 +234,10 @@ class SimilarBand(DynamicEnmetEntity):
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.band.name} ({self.score})>"
+
+    @staticmethod
+    def hash(*args, **kwargs) -> Tuple:
+        return args[0], args[1]
 
 
 class Album(EnmetEntity):
@@ -283,7 +298,7 @@ class Album(EnmetEntity):
         return [Disc(self.id, idx, self.bands) for idx in range(len(self._album_page.disc_names))]
 
     def _get_artists_for_kind(self, kind: str) -> List["AlbumArtist"]:
-        return [AlbumArtist(url_to_id(a[0]), self.id, name=a[1], role=a[2]) for a in getattr(self._album_page, kind)]
+        return [AlbumArtist(url_to_id(a[0]), self.id, self.name, name=a[1], role=a[2]) for a in getattr(self._album_page, kind)]
 
     @cached_property
     def lineup(self) -> List["AlbumArtist"]:
@@ -341,6 +356,10 @@ class Disc(DynamicEnmetEntity):
         for t in self._album_page.tracks[self._number]:
             tracks.append(Track(t[0], self._bands, int(t[1]), t[2], _timestr_to_time(t[3]), t[4]))
         return tracks
+
+    @staticmethod
+    def hash(*args, **kwargs) -> Tuple:
+        return args[0], args[1]
 
 
 class Track(EnmetEntity):
@@ -434,8 +453,8 @@ class Artist(EnmetEntity):
     def _get_bands(self, attrib: str) -> Dict["LineupArtist", List["AlbumArtist"]]:
         data = getattr(self._artist_page, attrib)
         result = {
-            LineupArtist(self.id, url_to_id(band[0]), name=band[3], role=band[2], ) if band[0] else ExternalEntity(band[1], role=band[2]):
-                [AlbumArtist(self.id, url_to_id(album[0]), name=album[3], role=album[2]) for album in data[band]]
+            LineupArtist(self.id, url_to_id(band[0]), band[1], name=band[3], role=band[2], ) if band[0] else ExternalEntity(band[1], role=band[2]):
+                [AlbumArtist(self.id, url_to_id(album[0]), album_name= album[1], name=album[3], role=album[2]) for album in data[band]]
             for band in data}
         return result
 
@@ -478,14 +497,24 @@ class EntityArtist(DynamicEnmetEntity, ABC):
     def __dir__(self) -> List[str]:
         return dir(self.artist) + ["role"]
 
+    def __hash__(self):
+        return int(self.id)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    @staticmethod
+    def hash(*args, **kwargs) -> Tuple:
+        return args[0], args[1]
+
 
 class LineupArtist(EntityArtist):
     """Artist in the current band lineup"""
 
-    def __init__(self, id_: str, band_id: str, name: str = None, role: str = None):
+    def __init__(self, id_: str, band_id: str, band_name: str, name: str = None, role: str = None):
         super().__init__(id_, role)
-        self.name_in_lineup = name
-        self.band = Band(band_id)
+        self.name_in_lineup = name or self.name
+        self.band = Band(band_id, name=band_name)
 
     def __dir__(self) -> Iterable[str]:
         return super().__dir__() + ["name_in_lineup", "band"]
@@ -494,16 +523,19 @@ class LineupArtist(EntityArtist):
         return f"<{self.__class__.__name__}: {self.name_in_lineup} ({self.id})>"
 
     def __str__(self):
-        return self.name_in_lineup
+        return f"{self.name_in_lineup} ({self.band.name})"
+
+    def __hash__(self):
+        return hash((super().__hash__(), self.band.id))
 
 
 class AlbumArtist(EntityArtist):
     """Artist for an album"""
 
-    def __init__(self, id_: str, album_id: str, *, name: str = None, role: str = None):
+    def __init__(self, id_: str, album_id: str, album_name: str, *, name: str = None, role: str = None):
         super().__init__(id_, role)
         self.name_on_album = name
-        self.album = Album(album_id)
+        self.album = Album(album_id, name=album_name)
 
     def __dir__(self) -> Iterable[str]:
         return super().__dir__() + ["name_on_album", "album"]
@@ -512,4 +544,7 @@ class AlbumArtist(EntityArtist):
         return f"<{self.__class__.__name__}: {self.name_on_album} ({self.id})>"
 
     def __str__(self):
-        return self.name_on_album
+        return f"{self.name_on_album} ({self.album.name})"
+
+    def __hash__(self):
+        return hash((super().__hash__(), self.album.id))
