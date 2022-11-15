@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 from enmet import set_session_cache, search_bands, Artist, PartialDate, Band, Countries, search_albums, ReleaseTypes, \
     Album, Track, EnmetEntity, ExternalEntity, random_band
-from enmet.common import datestr_to_date
+from enmet.common import datestr_to_date, BandStatuses
 from enmet.pages import _CachedSite, ArtistPage
 
 
@@ -34,7 +34,7 @@ def test_band():
     assert {a.id for a in band.lineup} == {"184", "2836", "3826", "1391"}
     assert repr(band.lineup[0]) == "<LineupArtist: Dave Mustaine (184)>"
     assert str(band.lineup[0]) == "Dave Mustaine"
-    assert Artist(184) is band.lineup[0].artist
+    assert Artist("184") is band.lineup[0].artist
     assert band.lineup[0].artist.real_full_name == "David Scott Mustaine"
     assert str(band.lineup[0].artist) == "Dave Mustaine"
     assert all(x in dir(band.lineup[0]) for x in ["name_in_lineup", "band"])
@@ -90,7 +90,7 @@ def test_band_links_labels():
 
 def test_artist():
     # given
-    a = Artist(184)
+    a = Artist("184")
     # then
     assert "1961" in a.age
     assert a.place_of_birth == 'United States (La Mesa, California)'
@@ -99,26 +99,26 @@ def test_artist():
     assert a.trivia.startswith("Dave performed alongside Dream Theater")
     assert set(dir(a)) == {'active_bands', 'age', 'biography', 'gender', 'guest_session', 'links', 'misc_staff', 'name',
                            'past_bands', 'place_of_birth', 'real_full_name', 'trivia', 'last_modified'}
-    assert list(a.active_bands.keys()) == [Band(138)]
-    assert set(a.past_bands) == {Band(3540464105), Band(4984), Band(125), Band(3540461857),
+    assert list(a.active_bands.keys()) == [Band("138")]
+    assert set(a.past_bands) == {Band("3540464105"), Band("4984"), Band("125"), Band("3540461857"),
                                  ExternalEntity("Fallen Angels", role="Vocals, Guitars (1983)"), ExternalEntity("Panic", role="Guitars (?-1981)")}
-    assert set(a.guest_session) == {Band(401), Band(37), Band(706), Band(343)}
-    assert set(a.misc_staff) == {Band(138), Band(4984), Band(125), Band(3540461857), Band(401), Band(343), Band(25),
-                                 Band(1831)}
+    assert set(a.guest_session) == {Band("401"), Band("37"), Band("706"), Band("343")}
+    assert set(a.misc_staff) == {Band("138"), Band("4984"), Band("125"), Band("3540461857"), Band("401"), Band("343"), Band("25"),
+                                 Band("1831")}
     assert len(a.links) == 10
     assert isinstance(a.last_modified, datetime)
 
 
 def test_artist_two_extended_sections_first_no_read_more():
     # given
-    a = Artist(107)
+    a = Artist("107")
     # then
     assert a.biography.startswith("Adrian Smith is an English guitarist")
 
 
 def test_artist_less_extras():
     # given
-    a = Artist(14883)
+    a = Artist("14883")
     # then
     assert a.trivia.startswith("DiSanto was arrested")
     assert a.biography is None
@@ -126,7 +126,7 @@ def test_artist_less_extras():
 
 def test_ArtistPage_with_band_and_album_alias():
     # given
-    a = ArtistPage(15954)
+    a = ArtistPage("15954")
     # then
     assert [key[3] for key in a.past_bands if key[0] and "/510#" in key[0]][0] == "John Syriis"
     albums = [v for v in a.active_bands.values() if len(v) > 5][0]
@@ -303,7 +303,7 @@ def test_Track_no_band_for_track():
 
 
 @pytest.mark.parametrize("attr, val, expected", [("country", SimpleNamespace(text="Poland"), Countries.POLAND),
-                                                 ("status", SimpleNamespace(text=2), 2),
+                                                 ("status", SimpleNamespace(text="Active"), BandStatuses.ACTIVE),
                                                  ("label", SimpleNamespace(text=3), 3)])
 def test_Band_properties(mocker, attr, val, expected):
     # given

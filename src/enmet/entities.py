@@ -5,8 +5,8 @@ from functools import cached_property, reduce
 from inspect import getmembers
 from typing import List, Iterable, Optional, Tuple, Union, Dict
 
-from .countries import Countries, country_to_enum_name
 from .common import CachedInstance, ReleaseTypes, url_to_id, datestr_to_date, PartialDate, BandStatuses
+from .countries import Countries, country_to_enum_name
 from .pages import BandPage, DiscographyPage, BandRecommendationsPage, AlbumPage, LyricsPage, ArtistPage, BandLinksPage, \
     ArtistLinksPage, AlbumVersionsPage
 
@@ -452,10 +452,16 @@ class Artist(EnmetEntity):
 
     def _get_bands(self, attrib: str) -> Dict[Band, List[Album]]:
         data = getattr(self._artist_page, attrib)
-        result = {
-            Band(url_to_id(band[0]), name=band[1]) if band[0] else ExternalEntity(band[1], role=band[2]):
-                [Album(url_to_id(album[0]), name=album[1]) for album in data[band]]
-            for band in data}
+        result = {}
+        for band in data:
+            key = Band(url_to_id(band[0]), name=band[1]) if band[0] else ExternalEntity(band[1], role=band[2])
+            if isinstance(key, Band):
+                album_ids = [url_to_id(album[0]) for album in data[band]]
+                result[key] = [Album(url_to_id(album[0]), name=album[1], year=album[2]) for album
+                               in DiscographyPage(url_to_id(band[0])).albums
+                               if url_to_id(album[0]) in album_ids]
+            else:
+                result[key] = []  # ???
         return result
 
     @cached_property
