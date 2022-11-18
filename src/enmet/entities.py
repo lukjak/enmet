@@ -71,9 +71,10 @@ class ExternalEntity(Entity):
     sake of consistency.
     """
     def __init__(self, name: str, **kwargs):
-        self.name = name
-        for arg in kwargs:
-            setattr(self, arg, kwargs[arg])
+        if not hasattr(self, "name"):
+            self.name = name
+            for arg in kwargs:
+                setattr(self, arg, kwargs[arg])
 
     def __dir__(self) -> Iterable[str]:
         return vars(self)
@@ -82,16 +83,16 @@ class ExternalEntity(Entity):
         return hash(self) == hash(other)
 
     def __hash__(self):
-        return hash(tuple(sorted((k, getattr(self, k)) for k in vars(self))))
+        return hash(tuple(vars(self).values()))
 
     @staticmethod
     def hash(*args, **kwargs) -> Tuple:
-        return tuple(sorted(a for a in args) + sorted(f"{k}={v}" for k, v in kwargs.items()))
+        return tuple(sorted(args) + sorted(kwargs.values()))
 
 
 class EnmetEntity(Entity, ABC):
+    """Native entity with own id"""
     def __init__(self, id_):
-        id_ = str(id_)
         if not hasattr(self, "id"):
             self.id = id_
 
@@ -104,7 +105,7 @@ class EnmetEntity(Entity, ABC):
 
 
 class DynamicEnmetEntity(Entity, ABC):
-    """Represents entities without its own identity in Enmet, for example disc of an album"""
+    """Represents entity without its own identity in Enmet, for example disc of an album"""
 
 
 class Band(EnmetEntity):
@@ -222,9 +223,10 @@ class Band(EnmetEntity):
 class SimilarBand(DynamicEnmetEntity):
     def __init__(self, id_: str, similar_to_id: str, score: str, name: str = None, country: str = None,
                  genres: str = None):
-        self.band = Band(id_, name=name, country=country, genres=genres)
-        self.similar_to = Band(similar_to_id)
-        self.score = int(score)
+        if not "band" in self.__dict__:
+            self.band = Band(id_, name=name, country=country, genres=genres)
+            self.similar_to = Band(similar_to_id)
+            self.score = int(score)
 
     def __dir__(self) -> List[str]:
         return dir(self.band) + ["score", "similar_to"]
@@ -334,9 +336,10 @@ class Album(EnmetEntity):
 
 class Disc(DynamicEnmetEntity):
     def __init__(self, album_id: str, number: int = 0, bands: List[Band] = None):
-        self._number = number
-        self._album_page = AlbumPage(album_id)
-        self._bands = bands
+        if not hasattr(self, "_number"):
+            self._number = number
+            self._album_page = AlbumPage(album_id)
+            self._bands = bands
 
     @cached_property
     def number(self) -> int:
@@ -494,8 +497,9 @@ class EntityArtist(DynamicEnmetEntity, ABC):
     """"Album artist or lineup artist"""
 
     def __init__(self, id_, role: str = None):
-        self.artist = Artist(id_)
-        self.role = role
+        if not "artist" in self.__dict__:
+            self.artist = Artist(id_)
+            self.role = role
 
     def __getattr__(self, item):
         return getattr(self.artist, item)
@@ -503,20 +507,19 @@ class EntityArtist(DynamicEnmetEntity, ABC):
     def __dir__(self) -> List[str]:
         return dir(self.artist) + ["role"]
 
-    def __hash__(self):
-        return int(self.id)
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
+    @staticmethod
+    def hash(*args, **kwargs) -> Tuple:
+        return args[0], args[1]
 
 
 class LineupArtist(EntityArtist):
     """Artist in the current band lineup"""
 
     def __init__(self, id_: str, band_id: str, name=None, role=None):
-        super().__init__(id_, role)
-        self.name_in_lineup = name
-        self.band = Band(band_id)
+        if not "name_in_lineup" in self.__dict__:
+            super().__init__(id_, role)
+            self.name_in_lineup = name
+            self.band = Band(band_id)
 
     def __dir__(self) -> Iterable[str]:
         return super().__dir__() + ["name_in_lineup", "band"]
@@ -527,21 +530,15 @@ class LineupArtist(EntityArtist):
     def __str__(self):
         return self.name_in_lineup
 
-    def __hash__(self):
-        return hash((super().__hash__(), self.band.id if isinstance(self.band, EnmetEntity) else self.band.name))
-
-    @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return args[0], args[1] if args[1] else args[2]
-
 
 class AlbumArtist(EntityArtist):
     """Artist for an album"""
 
     def __init__(self, id_: str, album_id: str, *, name: str = None, role: str = None):
-        super().__init__(id_, role)
-        self.name_on_album = name
-        self.album = Album(album_id)
+        if not "name_on_album" in self.__dict__:
+            super().__init__(id_, role)
+            self.name_on_album = name
+            self.album = Album(album_id)
 
     def __dir__(self) -> Iterable[str]:
         return super().__dir__() + ["name_on_album", "album"]
@@ -551,10 +548,3 @@ class AlbumArtist(EntityArtist):
 
     def __str__(self):
         return self.name_on_album
-
-    def __hash__(self):
-        return hash((super().__hash__(), self.album.id))
-
-    @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return args[0], args[1]

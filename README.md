@@ -80,15 +80,12 @@ When using Enmet, some entities may appear in many objects. For example each alb
 import enmet
 
 megadeth = enmet.search_bands(name="Megadeth")[0]
-megadeth2 = enmet.Band(138)
+megadeth2 = enmet.Band("138")
 print(megadeth is megadeth2)
 ```
-- Only EnmetEntity objects are cached. DynamicEnmentEntity objects pertain only to specific combinations of other objects and are unlikely to be reused. ExternalEntity objects are simple and rarely used.
 - To optimise memory usage, only actually used objects are cached. Once an object is nowehere referenced in your code, it is removed from the cache.
 
 ## Reference manual
-
-Note: Any _id__ parameters can be passed as numbers and they will be converted to strings internally. Identifiers can contain letters in some cases.  
 
 Note: Any optional parameters in constructors that provide values related to an entity and which are not provided when creating the object, are resolved lazily later.
 
@@ -114,6 +111,8 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
     - `guest_session_musicians(self) -> List["AlbumArtist"]`
     - `other_staff(self) -> List["AlbumArtist"]`
     - `additional_notes(self) -> str`
+    - `last_modified(self) -> datetime` (time of the last modification of the album's page)
+    - `other_versions(self) -> List["Album"]`
 - `AlbumArtist(_EntityArtist)`. This class represent an artist performing on a specific album.
   - `__init__(self, id_: str, album_id: str, *, name: str = None, role: str = None)`. `id_` is the artist's identifier in Metal Archives. `album_id` is an album's identifier. `name` is the artist's name as stated on the album. `role` is the artist's role on the album.
   - Attributes and properties:
@@ -137,6 +136,7 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
     - `guest_session(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
     - `misc_staff(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
     - `links(self) -> List[Tuple[str, str]]`
+    - `last_modified(self) -> datetime` (time of the last modification of the artist's page)
 - `Band(EnmetEntity)`. This class represents a band.
   - `__init__(self, id_: str, *, name: str = None, country: Countries = None)`. `id_` is the band's identifier in Metal Archives. `name` is the band's name as stated on the band's page. `country` is the band's country of origin.
   - Attributes and properties:
@@ -156,6 +156,12 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
     - `live_musicians(self) -> List["LineupArtist"]`
     - `info(self) -> str` (free text information below header items)
     - `last_modified(self) -> datetime` (date of the last band page modification)
+    - `status(self) -> Optional[BandStatuses]`
+    - `links_official(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
+    - `links_official_merchandise(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
+    - `links_unofficial(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
+    - `links_labels(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
+    - `links_tabulatures(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
 - `Disc(DynamicEnmetEntity)`. This class represents a disc of an album. More precisely, it is a container which holds some or all tracks of the album. Except for a CD, it can be in fact a physical cassette, VHS, DVD or even arbitrary partition in case of electronic releases - whatever Metal Archives considers a "disc". 
   - `__init__(self, album_id: str, number: int = 0, bands: List[Band] = None)`. `album_id` is id of an album the disc belongs to. `number` is ordinal number of the disc on the album (counted from 0). `bands` is a list of bands that perform tracks on the disc.
   - Attributes and properties:
@@ -217,6 +223,7 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
 ### Enums
 - `Countries`. This is a dynamic enum with available countries.
 - `ReleaseTypes`. This is an enum keeping available release (album) types.
+- `BandStatuses`. Available band statuses.
 
 ### Helper classes
 - `PartialDate`. This class enables keeping a date that has year, month and day, only year and month or only year. Its objects have integer `year`, `month` and `day` properties, where the two latter may also be `None`. 
@@ -250,7 +257,7 @@ Working with Metal Archives can involve many HTTP requests and creation of large
 To mitigate negative effects of these factors and to improve general responsiveness, there are following methods applied (_mind that no related tests have been done, there is just some common sense applied_):
 - HTTP session cache in `_CachedSite` class from `requests-cache` package. This on-disk cache stores responses obtained from Metal Archives servers for `DataPages` objects. Read more [here](https://requests-cache.readthedocs.io/en/stable/).
 - BeautifulSoup objects cache in `_CachedSite` class using `@lru_cache`. This fixed-size (`_BS_CACHE_SIZE`) cache keeps BeautifulSoup objects created from HTTP response pages. It is supposed to increase performance when multiple properties of a set of objects are accessed.
-- Deduplication of `DataPage` and `EnmetEntity` objects using `_CachedInstance` mixin class. Only one instance of relevant object is created and then re-used when there is attempt to create an object referring to the same page or entity. In this way fe. all `Album` objects in a band's discography can refer to the same `Band` object.
+- Deduplication of `DataPage` and `Entity` objects using `CachedInstance` mixin class. Only one instance of relevant object is created and then re-used when there is attempt to create an object referring to the same page or entity. In this way fe. all `Album` objects in a band's discography can refer to the same `Band` object. Object identities are determined by static `hash(*args, **kwargs) -> Tuple` functions which provide hashable value used by `CachedInstance` along with object type to determine whether a new object should be created or an existing object used.
 
 
 ### Unit tests
