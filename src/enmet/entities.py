@@ -61,7 +61,7 @@ class Entity(ABC, CachedInstance):
     @staticmethod
     @abstractmethod
     def hash(*args, **kwargs) -> Tuple:
-        pass
+        """Pseudo-hash for use in CachedInstance.__new__ to determine whether to use cache."""
 
 
 class ExternalEntity(Entity):
