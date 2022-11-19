@@ -4,7 +4,7 @@ from pathlib import PurePath
 from urllib.parse import urlparse
 from weakref import WeakValueDictionary
 
-__all__ = ["ReleaseTypes", "PartialDate"]
+__all__ = ["ReleaseTypes", "PartialDate", "BandStatuses"]
 
 _logger = logging.getLogger(__file__)
 
@@ -64,15 +64,15 @@ class CachedInstance:
     """Mixin to reuse existing objects."""
     _CACHE = WeakValueDictionary()
 
-    def __new__(cls, id_: str, *args, **kwargs):
-        id_ = str(id_)
-        if obj := CachedInstance._CACHE.get((cls.__name__, id_)):
-            _logger.debug(f"cached get {cls.__name__} {id_}")
+    def __new__(cls, *args, **kwargs):
+        hash_ = cls.hash(*args, **kwargs)
+        if obj := CachedInstance._CACHE.get((cls.__name__, hash_)):
+            _logger.debug(f"cached get {cls.__name__} {hash_}")
             return obj
         else:
-            _logger.debug(f"uncached get {cls.__name__} {id_}")
+            _logger.debug(f"uncached get {cls.__name__} {hash_}")
             obj = super().__new__(cls)
-            CachedInstance._CACHE[(cls.__name__, id_)] = obj
+            CachedInstance._CACHE[(cls.__name__, hash_)] = obj
             return obj
 
 
@@ -89,3 +89,12 @@ class ReleaseTypes(Enum):
     COMPILATION = "Compilation"
     SPLIT_VIDEO = "Split video"
     COLLABORATION = "Collaboration"
+
+
+class BandStatuses(Enum):
+    ACTIVE = "Active"
+    ON_HOLD = "On hold"
+    SPLIT_UP = "Split-up"
+    UNKNOWN = "Unknown"
+    CHANGED_NAME = "Changed name"
+    DISPUTED = "Disputed"
