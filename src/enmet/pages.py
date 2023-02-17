@@ -254,6 +254,14 @@ class BandPage(_DataPage):
     def last_modified(self) -> str:
         return self.enmet.find("td", string=re.compile("Last modified on")).text
 
+    @cached_property
+    def logo_image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".band_name_img img")) and link[0]["src"]
+
+    @cached_property
+    def band_image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".band_img img")) and link[0]["src"]
+
 
 class _BandInfoPage(_DataPage):
     RESOURCE = "band/read-more/id/{}"
@@ -543,6 +551,10 @@ class ArtistPage(_DataPage):
     @cached_property
     def last_modified(self) -> str:
         return self.enmet.find("td", string=re.compile("Last modified on")).text
+
+    @cached_property
+    def image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".member_img img")) and link[0]["src"]
 
 
 

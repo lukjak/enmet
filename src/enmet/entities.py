@@ -3,6 +3,9 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from functools import cached_property, reduce
 from inspect import getmembers
+from urllib.parse import urlparse
+
+import requests
 from typing import List, Iterable, Optional, Tuple, Union, Dict
 
 from .common import CachedInstance, ReleaseTypes, url_to_id, datestr_to_date, PartialDate, BandStatuses
@@ -48,6 +51,14 @@ def _turn_na_into_none(data: Union[str, List, timedelta]) -> Union[List, None, s
         return None
     else:
         return data
+
+
+def _get_image(url: str) -> Tuple[str, str, bytes]:
+    response = requests.get(url)
+    type = response.headers["Content-Type"]
+    name = urlparse(response.url).path.split("/")[-1]
+    data = response.content
+    return name, type, data
 
 
 class Entity(ABC, CachedInstance):
@@ -218,6 +229,12 @@ class Band(EnmetEntity):
     @cached_property
     def links_tabulatures(self) -> List[Tuple[str, str]]:
         return self._links_page.links_tabulatures
+
+    def get_logo_image(self) -> Tuple[str, str, bytes]:
+        return _get_image(self._band_page.logo_image_link)
+
+    def get_band_image(self) -> Tuple[str, str, bytes]:
+        return _get_image(self._band_page.band_image_link)
 
 
 class SimilarBand(DynamicEnmetEntity):
@@ -491,6 +508,9 @@ class Artist(EnmetEntity):
     def last_modified(self) -> datetime:
         data = self._artist_page.last_modified
         return _timestamp_to_time(data)
+
+    def get_image(self) -> Tuple[str, str, bytes]:
+        return _get_image(self._artist_page.image_link)
 
 
 class EntityArtist(DynamicEnmetEntity, ABC):
