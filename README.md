@@ -69,6 +69,8 @@ The cache by default is located in `%LOCALAPPDATA%\.enmet` or `~/.enmet` directo
 
 In order to control caching, you can both obtain the default cache object (for example to clean up old entries) and set your own cache. If you use your own cache, you need to set it each time you use _Enmet_, as there is no persistent configuration for it. The function to manipulate the cache is [`set_session_cache`](#functions).
 
+Web requests fetching images are not cached.
+
 There is no feature to disable session caching.
 
 ### Object caching
@@ -113,6 +115,8 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
     - `additional_notes(self) -> str`
     - `last_modified(self) -> datetime` (time of the last modification of the album's page)
     - `other_versions(self) -> List["Album"]`
+  - Methods: 
+    - `def get_image(self) -> Tuple[str, str, bytes]` - album image: original file name, MIME type, binary data
 - `AlbumArtist(_EntityArtist)`. This class represent an artist performing on a specific album.
   - `__init__(self, id_: str, album_id: str, *, name: str = None, role: str = None)`. `id_` is the artist's identifier in Metal Archives. `album_id` is an album's identifier. `name` is the artist's name as stated on the album. `role` is the artist's role on the album.
   - Attributes and properties:
@@ -137,6 +141,8 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
     - `misc_staff(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
     - `links(self) -> List[Tuple[str, str]]`
     - `last_modified(self) -> datetime` (time of the last modification of the artist's page)
+  - Methods: 
+    - `def get_image(self) -> Tuple[str, str, bytes]` - artist image: original file name, MIME type, binary data 
 - `Band(EnmetEntity)`. This class represents a band.
   - `__init__(self, id_: str, *, name: str = None, country: Countries = None)`. `id_` is the band's identifier in Metal Archives. `name` is the band's name as stated on the band's page. `country` is the band's country of origin.
   - Attributes and properties:
@@ -162,6 +168,9 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
     - `links_unofficial(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
     - `links_labels(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
     - `links_tabulatures(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
+  - Methods: 
+    - `def get_band_image(self) -> Tuple[str, str, bytes]` - band image: original file name, MIME type, binary data 
+    - `def get_logo_image(self) -> Tuple[str, str, bytes]` - logo image: original file name, MIME type, binary data
 - `Disc(DynamicEnmetEntity)`. This class represents a disc of an album. More precisely, it is a container which holds some or all tracks of the album. Except for a CD, it can be in fact a physical cassette, VHS, DVD or even arbitrary partition in case of electronic releases - whatever Metal Archives considers a "disc". 
   - `__init__(self, album_id: str, number: int = 0, bands: List[Band] = None)`. `album_id` is id of an album the disc belongs to. `number` is ordinal number of the disc on the album (counted from 0). `bands` is a list of bands that perform tracks on the disc.
   - Attributes and properties:

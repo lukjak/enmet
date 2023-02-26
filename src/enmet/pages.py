@@ -135,6 +135,7 @@ class _CachedSite:
 
 
 class _DataPage(_Page, CachedInstance, ABC):
+    """Abstract page of data (response to a data request)"""
 
     enmet = _CachedSite()
 
@@ -149,9 +150,15 @@ class _DataPage(_Page, CachedInstance, ABC):
     def set_session_cache(**kwargs) -> CachedSession:
         return _DataPage.enmet.set_session(**kwargs)
 
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __hash__(self):
+        return self.hash(self.__class__, self.id)
+
     @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return args[0],
+    def hash(cls, *args, **kwargs) -> int:
+        return hash((cls, args[0]))
 
 
 class DiscographyPage(_DataPage):
@@ -208,7 +215,7 @@ class BandPage(_DataPage):
 
     @cached_property
     def lyrical_themes(self) -> List[str]:
-        return _split_by_sep(self._get_header_item("Lyrical themes:").text.strip())
+        return _split_by_sep(self._get_header_item("Themes:").text.strip())
 
     @cached_property
     def current_label(self):
@@ -254,6 +261,14 @@ class BandPage(_DataPage):
     def last_modified(self) -> str:
         return self.enmet.find("td", string=re.compile("Last modified on")).text
 
+    @cached_property
+    def logo_image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".band_name_img img")) and link[0]["src"]
+
+    @cached_property
+    def band_image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".band_img img")) and link[0]["src"]
+
 
 class _BandInfoPage(_DataPage):
     RESOURCE = "band/read-more/id/{}"
@@ -267,31 +282,36 @@ class BandLinksPage(_DataPage):
     RESOURCE = "link/ajax-list/type/band/id/{}"
 
     def _get_links(self, kind: str) -> List[Tuple[str, str]]:
-        data = self.enmet.select_one(f"#{kind}")
-        if data is None:
-            return []
-        else:
-            return [(item["href"], item.text) for item in data.select("a")]
+        result = []
+        data = self.enmet.select(f"#{kind} ~ tr")
+        if data is not None:
+            for row in data:
+                if row["id"].startswith("header_"):
+                    break
+                else:
+                    cell = row.select_one("a")
+                    result.append((cell["href"], cell.text))
+        return result
 
     @cached_property
     def links_official(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Official")
+        return self._get_links("header_Official")
 
     @cached_property
     def links_official_merchandise(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Official_merchandise")
+        return self._get_links("header_Official_merchandise")
 
     @cached_property
     def links_unofficial(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Unofficial")
+        return self._get_links("header_Unofficial")
 
     @cached_property
     def links_labels(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Labels")
+        return self._get_links("header_Labels")
 
     @cached_property
     def links_tabulatures(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Tablatures")
+        return self._get_links("header_Tablatures")
 
 
 class BandRecommendationsPage(_DataPage):
@@ -420,6 +440,10 @@ class AlbumPage(_DataPage):
     def last_modified(self) -> str:
         return self.enmet.find("td", string=re.compile("Last modified on")).text
 
+    @cached_property
+    def image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".album_img img")) and link[0]["src"]
+
 
 class AlbumVersionsPage(_DataPage):
     RESOURCE = "release/ajax-versions/current/{}/parent/{}"
@@ -543,6 +567,10 @@ class ArtistPage(_DataPage):
     @cached_property
     def last_modified(self) -> str:
         return self.enmet.find("td", string=re.compile("Last modified on")).text
+
+    @cached_property
+    def image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".member_img img")) and link[0]["src"]
 
 
 

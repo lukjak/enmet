@@ -1,8 +1,12 @@
 import re
-from abc import ABC, abstractmethod
+from abc import ABC
 from datetime import datetime, timedelta
 from functools import cached_property, reduce
 from inspect import getmembers
+from itertools import chain
+from urllib.parse import urlparse
+
+import requests
 from typing import List, Iterable, Optional, Tuple, Union, Dict
 
 from .common import CachedInstance, ReleaseTypes, url_to_id, datestr_to_date, PartialDate, BandStatuses
@@ -50,7 +54,16 @@ def _turn_na_into_none(data: Union[str, List, timedelta]) -> Union[List, None, s
         return data
 
 
-class Entity(ABC, CachedInstance):
+def _get_image(url: str) -> Tuple[str, str, bytes]:
+    """Returns image file name, mime type/subtype and bytes"""
+    response = requests.get(url)
+    type = response.headers["Content-Type"]
+    name = urlparse(response.url).path.split("/")[-1]
+    data = response.content
+    return name, type, data
+
+
+class Entity(CachedInstance, ABC):
     """A thing, like band or album"""
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.name}>"
@@ -58,17 +71,14 @@ class Entity(ABC, CachedInstance):
     def __dir__(self) -> List[str]:
         return [p[0] for p in getmembers(self.__class__) if type(p[1]) is cached_property]
 
-    @staticmethod
-    @abstractmethod
-    def hash(*args, **kwargs) -> Tuple:
-        """Pseudo-hash for use in CachedInstance.__new__ to determine whether to use cache."""
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
 
 class ExternalEntity(Entity):
     """
     Non EM entity, like non-metal musician in metal album lineup.
-    It has only string representation and is a class just for the
-    sake of consistency.
+    Construction requires some string ("name" - actual object value) + accepts any extra attributes.
     """
     def __init__(self, name: str, **kwargs):
         if not hasattr(self, "name"):
@@ -79,15 +89,13 @@ class ExternalEntity(Entity):
     def __dir__(self) -> Iterable[str]:
         return vars(self)
 
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
     def __hash__(self):
-        return hash(tuple(vars(self).values()))
+        # There is a potential issue here if attributes are added to instance after initialization.
+        return self.hash(self.__class__, vars(self).values())
 
     @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return tuple(sorted(args) + sorted(kwargs.values()))
+    def hash(cls, *args, **kwargs) -> int:
+        return hash((cls, tuple(sorted(str(val) for val in chain(args, kwargs.values())))))
 
 
 class EnmetEntity(Entity, ABC):
@@ -99,9 +107,13 @@ class EnmetEntity(Entity, ABC):
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.name} ({self.id})>"
 
+    def __hash__(self):
+        return self.hash(self.__class__, self.id)
+
     @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return args[0],
+    def hash(cls, *args, **kwargs) -> int:
+        # Assuming entities of different types cannot have the same id - ???
+        return hash((cls, args[0]))
 
 
 class DynamicEnmetEntity(Entity, ABC):
@@ -219,9 +231,15 @@ class Band(EnmetEntity):
     def links_tabulatures(self) -> List[Tuple[str, str]]:
         return self._links_page.links_tabulatures
 
+    def get_logo_image(self) -> Tuple[str, str, bytes]:
+        return _get_image(self._band_page.logo_image_link)
+
+    def get_band_image(self) -> Tuple[str, str, bytes]:
+        return _get_image(self._band_page.band_image_link)
+
 
 class SimilarBand(DynamicEnmetEntity):
-    def __init__(self, id_: str, similar_to_id: str, score: str, name: str = None, country: str = None,
+    def __init__(self, id_: str, similar_to_id: str, /, score: str, name: str = None, country: str = None,
                  genres: str = None):
         if not "band" in self.__dict__:
             self.band = Band(id_, name=name, country=country, genres=genres)
@@ -237,13 +255,16 @@ class SimilarBand(DynamicEnmetEntity):
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.band.name} ({self.score})>"
 
+    def __hash__(self):
+        return self.hash(self.__class__, self.band.id, self.similar_to.id)
+
     @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return args[0], args[1]
+    def hash(cls, *args, **kwargs) -> int:
+        return hash((cls, args[0], args[1]))
 
 
 class Album(EnmetEntity):
-    def __init__(self, id_: str, *, name: str = None, year: int = None):
+    def __init__(self, id_: str, /, *, name: str = None, year: int = None):
         # Have parameters for str and repr ready
         if not hasattr(self, "id"):
             super().__init__(id_)
@@ -333,9 +354,12 @@ class Album(EnmetEntity):
         data = AlbumVersionsPage(self.id).other_versions
         return [Album(url_to_id(item[0])) for item in data]
 
+    def get_image(self) -> Tuple[str, str, bytes]:
+        return _get_image(self._album_page.image_link)
+
 
 class Disc(DynamicEnmetEntity):
-    def __init__(self, album_id: str, number: int = 0, bands: List[Band] = None):
+    def __init__(self, album_id: str, number: int = 0, /, bands: List[Band] = None):
         if not hasattr(self, "_number"):
             self._number = number
             self._album_page = AlbumPage(album_id)
@@ -360,9 +384,12 @@ class Disc(DynamicEnmetEntity):
             tracks.append(Track(t[0], self._bands, int(t[1]), t[2], _timestr_to_time(t[3]), t[4]))
         return tracks
 
+    def __hash__(self):
+        return self.hash(self.__class__, self._album_page.id, self._number)
+
     @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return args[0], args[1]
+    def hash(cls, *args, **kwargs) -> int:
+        return hash((cls, args[0], args[1]))
 
 
 class Track(EnmetEntity):
@@ -492,11 +519,14 @@ class Artist(EnmetEntity):
         data = self._artist_page.last_modified
         return _timestamp_to_time(data)
 
+    def get_image(self) -> Tuple[str, str, bytes]:
+        return _get_image(self._artist_page.image_link)
+
 
 class EntityArtist(DynamicEnmetEntity, ABC):
     """"Album artist or lineup artist"""
 
-    def __init__(self, id_, role: str = None):
+    def __init__(self, id_, role: str = None, /):
         if not "artist" in self.__dict__:
             self.artist = Artist(id_)
             self.role = role
@@ -507,9 +537,12 @@ class EntityArtist(DynamicEnmetEntity, ABC):
     def __dir__(self) -> List[str]:
         return dir(self.artist) + ["role"]
 
+    def __hash__(self):
+        return self.hash(self.__class__, self.artist.id, self.role)
+
     @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return args[0], args[1]
+    def hash(cls, *args, **kwargs) -> int:
+        return hash((cls, args[0], args[1]))
 
 
 class LineupArtist(EntityArtist):
