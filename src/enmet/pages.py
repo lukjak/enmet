@@ -135,6 +135,7 @@ class _CachedSite:
 
 
 class _DataPage(_Page, CachedInstance, ABC):
+    """Abstract page of data (response to a data request)"""
 
     enmet = _CachedSite()
 
@@ -149,9 +150,15 @@ class _DataPage(_Page, CachedInstance, ABC):
     def set_session_cache(**kwargs) -> CachedSession:
         return _DataPage.enmet.set_session(**kwargs)
 
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __hash__(self):
+        return self.hash(self.__class__, self.id)
+
     @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return args[0],
+    def hash(cls, *args, **kwargs) -> int:
+        return hash((cls, args[0]))
 
 
 class DiscographyPage(_DataPage):

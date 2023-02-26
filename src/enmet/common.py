@@ -1,6 +1,8 @@
 import logging
+from abc import abstractmethod, ABC
 from enum import Enum
 from pathlib import PurePath
+from typing import Tuple, Type
 from urllib.parse import urlparse
 from weakref import WeakValueDictionary
 
@@ -60,20 +62,25 @@ def datestr_to_date(date_string: str) -> PartialDate:
             return PartialDate(year=int(year[0]))
 
 
-class CachedInstance:
+class CachedInstance(ABC):
     """Mixin to reuse existing objects."""
     _CACHE = WeakValueDictionary()
 
     def __new__(cls, *args, **kwargs):
-        hash_ = cls.hash(*args, **kwargs)
-        if obj := CachedInstance._CACHE.get((cls.__name__, hash_)):
+        hash_ = cls.hash(cls, *args, **kwargs)
+        if obj := CachedInstance._CACHE.get(hash_):
             _logger.debug(f"cached get {cls.__name__} {hash_}")
             return obj
         else:
             _logger.debug(f"uncached get {cls.__name__} {hash_}")
             obj = super().__new__(cls)
-            CachedInstance._CACHE[(cls.__name__, hash_)] = obj
+            CachedInstance._CACHE[hash_] = obj
             return obj
+
+    @staticmethod
+    @abstractmethod
+    def hash(cls: Type, *args, **kwargs) -> int:
+        """Pseudo-hash to use in __new__."""
 
 
 class ReleaseTypes(Enum):
