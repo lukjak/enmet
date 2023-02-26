@@ -354,6 +354,9 @@ class Album(EnmetEntity):
         data = AlbumVersionsPage(self.id).other_versions
         return [Album(url_to_id(item[0])) for item in data]
 
+    def get_image(self) -> Tuple[str, str, bytes]:
+        return _get_image(self._album_page.image_link)
+
 
 class Disc(DynamicEnmetEntity):
     def __init__(self, album_id: str, number: int = 0, /, bands: List[Band] = None):

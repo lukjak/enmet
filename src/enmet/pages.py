@@ -440,6 +440,10 @@ class AlbumPage(_DataPage):
     def last_modified(self) -> str:
         return self.enmet.find("td", string=re.compile("Last modified on")).text
 
+    @cached_property
+    def image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".album_img img")) and link[0]["src"]
+
 
 class AlbumVersionsPage(_DataPage):
     RESOURCE = "release/ajax-versions/current/{}/parent/{}"

@@ -198,6 +198,10 @@ def test_album():
     assert str(album.lineup[0]) == "Udo Dirkschneider"
     assert len(album.other_versions) > 20
     assert isinstance(album.last_modified, datetime)
+    img_file, img_type, img_data = album.get_image()
+    assert isinstance(img_file, str)
+    assert img_type.startswith("image/")
+    assert isinstance(img_data, bytes)
 
 
 def test_search_albums_with_years(mocker):
