@@ -55,6 +55,7 @@ def _turn_na_into_none(data: Union[str, List, timedelta]) -> Union[List, None, s
 
 
 def _get_image(url: str) -> Tuple[str, str, bytes]:
+    """Returns image file name, mime type/subtype and bytes"""
     response = requests.get(url)
     type = response.headers["Content-Type"]
     name = urlparse(response.url).path.split("/")[-1]

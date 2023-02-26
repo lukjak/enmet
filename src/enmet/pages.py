@@ -215,7 +215,7 @@ class BandPage(_DataPage):
 
     @cached_property
     def lyrical_themes(self) -> List[str]:
-        return _split_by_sep(self._get_header_item("Lyrical themes:").text.strip())
+        return _split_by_sep(self._get_header_item("Themes:").text.strip())
 
     @cached_property
     def current_label(self):
@@ -282,31 +282,36 @@ class BandLinksPage(_DataPage):
     RESOURCE = "link/ajax-list/type/band/id/{}"
 
     def _get_links(self, kind: str) -> List[Tuple[str, str]]:
-        data = self.enmet.select_one(f"#{kind}")
-        if data is None:
-            return []
-        else:
-            return [(item["href"], item.text) for item in data.select("a")]
+        result = []
+        data = self.enmet.select(f"#{kind} ~ tr")
+        if data is not None:
+            for row in data:
+                if row["id"].startswith("header_"):
+                    break
+                else:
+                    cell = row.select_one("a")
+                    result.append((cell["href"], cell.text))
+        return result
 
     @cached_property
     def links_official(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Official")
+        return self._get_links("header_Official")
 
     @cached_property
     def links_official_merchandise(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Official_merchandise")
+        return self._get_links("header_Official_merchandise")
 
     @cached_property
     def links_unofficial(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Unofficial")
+        return self._get_links("header_Unofficial")
 
     @cached_property
     def links_labels(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Labels")
+        return self._get_links("header_Labels")
 
     @cached_property
     def links_tabulatures(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Tablatures")
+        return self._get_links("header_Tablatures")
 
 
 class BandRecommendationsPage(_DataPage):
