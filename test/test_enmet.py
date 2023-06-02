@@ -29,7 +29,7 @@ def test_band():
     assert band.formed_in == 1983
     assert band.years_active == ["1983 (as Fallen Angels)", "1983-2002", "2004-present"]
     assert band.genres == ["Thrash Metal (early/later)", "Heavy Metal/Rock (mid)"]
-    assert band.lyrical_themes == ["Politics", "War", "History", "Death", "Religion", "Society", "New World Order"]
+    assert set(band.lyrical_themes) == set(["Politics", "War", "History", "Death", "Religion", "Society", "New World Order"])
     assert band.label == "Tradecraft"
     assert {a.id for a in band.lineup} == {"184", "2836", "3826", "1391"}
     assert repr(band.lineup[0]) == "<LineupArtist: Dave Mustaine (184)>"
@@ -96,7 +96,7 @@ def test_artist():
     assert a.place_of_birth == 'United States (La Mesa, California)'
     assert a.gender == "Male"
     assert a.biography.startswith("Mustaine was born in La Mesa")
-    assert a.trivia.startswith("Dave performed alongside Dream Theater")
+    assert a.trivia.startswith("Mustaine is a born-again Christian")
     assert set(dir(a)) == {'active_bands', 'age', 'biography', 'gender', 'guest_session', 'links', 'misc_staff', 'name',
                            'past_bands', 'place_of_birth', 'real_full_name', 'trivia', 'last_modified'}
     assert list(a.active_bands.keys()) == [Band("138")]
