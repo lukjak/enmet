@@ -21,6 +21,7 @@ def temp_cache():
 
 def test_band():
     band = search_bands(name="megadeth", strict=True, formed_from=1980)[0]
+    assert len(band.links_tabulatures) > 5
     assert repr(band) == "<Band: Megadeth (138)>"
     assert str(band) == "Megadeth (United States)"
     assert band.name == "Megadeth"
@@ -29,7 +30,7 @@ def test_band():
     assert band.formed_in == 1983
     assert band.years_active == ["1983 (as Fallen Angels)", "1983-2002", "2004-present"]
     assert band.genres == ["Thrash Metal (early/later)", "Heavy Metal/Rock (mid)"]
-    assert set(band.lyrical_themes) == set(["Politics", "War", "History", "Death", "Religion", "Society", "New World Order"])
+    assert set(band.lyrical_themes) == set(["Politics", "Love", "Addiction", "History", "Death", "Religion", "Society", "New World Order"])
     assert band.label == "Tradecraft"
     assert {a.id for a in band.lineup} == {"184", "2836", "3826", "1391"}
     assert repr(band.lineup[0]) == "<LineupArtist: Dave Mustaine (184)>"
@@ -40,7 +41,7 @@ def test_band():
     assert all(x in dir(band.lineup[0]) for x in ["name_in_lineup", "band"])
     assert len(band.past_members) > 22
     assert len(band.live_musicians) > 5
-    assert band.discography[0].release_date == PartialDate(year=1984, month="March", day=9)
+    assert band.discography[0].release_date == PartialDate(year=1984, month=None, day=None)
     assert repr(band.discography[0].discs[0]) == "<Disc: None>"
     assert set(dir(band)) == {'country', 'discography', 'formed_in', 'genres', 'info', 'label', 'last_modified',
                               'lineup', 'live_musicians', 'location', 'lyrical_themes', 'name', 'past_members',
@@ -102,9 +103,8 @@ def test_artist():
     assert list(a.active_bands.keys()) == [Band("138")]
     assert set(a.past_bands) == {Band("3540464105"), Band("4984"), Band("125"), Band("3540461857"),
                                  ExternalEntity("Fallen Angels", role="Vocals, Guitars (1983)"), ExternalEntity("Panic", role="Guitars (?-1981)")}
-    assert set(a.guest_session) == {Band("401"), Band("37"), Band("706"), Band("343")}
-    assert set(a.misc_staff) == {Band("138"), Band("4984"), Band("125"), Band("3540461857"), Band("401"), Band("343"), Band("25"),
-                                 Band("1831")}
+    assert set(a.guest_session) == {Band("401"), Band("37"), Band("706"), Band("343"), Band("59")}
+    assert set(a.misc_staff) == {Band("138"), Band("4984"), Band("125"), Band("3540461857"), Band("401"), Band("343"), Band("1831")}
     assert len(a.links) == 10
     assert isinstance(a.last_modified, datetime)
 

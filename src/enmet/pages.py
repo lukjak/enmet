@@ -8,7 +8,7 @@ from time import sleep
 from typing import List, Tuple, Union, Optional, Type, Dict
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup, Tag, ResultSet
+from bs4 import BeautifulSoup, Tag, ResultSet, NavigableString
 from requests import get
 from requests_cache import CachedSession
 
@@ -208,7 +208,7 @@ class BandPage(_DataPage):
 
     @cached_property
     def lyrical_themes(self) -> List[str]:
-        return _split_by_sep(self._get_header_item("Lyrical themes:").text.strip())
+        return _split_by_sep(self._get_header_item("Themes:").text.strip())
 
     @cached_property
     def current_label(self):
@@ -266,32 +266,43 @@ class _BandInfoPage(_DataPage):
 class BandLinksPage(_DataPage):
     RESOURCE = "link/ajax-list/type/band/id/{}"
 
+    @cached_property
+    def _link_data(self) -> Tuple[Tuple[Union[Tag, NavigableString, None], ...], Dict]:
+        """Get all link rows and indices for particular sections."""
+        rows = self.enmet.select("tr")
+        indices = [(item.attrs["id"], idx) for idx, item in enumerate(rows) if item.attrs["id"].startswith("header_")]
+        data = {item: (idx+1, indices[number+1][1] if number < len(indices)-1 else len(rows)) for number, (item, idx) in enumerate(indices)}
+        rows = tuple(item.find("a") for item in rows)
+        return rows, data
+
     def _get_links(self, kind: str) -> List[Tuple[str, str]]:
-        data = self.enmet.select_one(f"#{kind}")
-        if data is None:
+        """Get links for a particular section."""
+        rows, data = self._link_data
+        name = "header_" + kind
+        if name not in data:
             return []
         else:
-            return [(item["href"], item.text) for item in data.select("a")]
+            return [(rows[idx]["href"], rows[idx].text.strip()) for idx in range(data[name][0], data[name][1])]
 
     @cached_property
     def links_official(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Official")
+        return self._get_links("Official")
 
     @cached_property
     def links_official_merchandise(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Official_merchandise")
+        return self._get_links("Official_merchandise")
 
     @cached_property
     def links_unofficial(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Unofficial")
+        return self._get_links("Unofficial")
 
     @cached_property
     def links_labels(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Labels")
+        return self._get_links("Labels")
 
     @cached_property
     def links_tabulatures(self) -> List[Tuple[str, str]]:
-        return self._get_links("band_links_Tablatures")
+        return self._get_links("Tablatures")
 
 
 class BandRecommendationsPage(_DataPage):
