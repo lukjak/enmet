@@ -65,7 +65,7 @@ Working with a web site is costly in terms of time - fetching each page takes si
 
 Searches, which also involve requesting data from Metal Archives, at NOT cached - each search fetches a new result. 
 
-The cache by default is located in `%LOCALAPPDATA%\.enmet` or `~/.enmet` directory. The cache is handled by a `CachedSession` object from [_requests-cache_](https://requests-cache.readthedocs.io/en/stable/) package. Again by default, this is sqlite database named _enmet_data.sqlite_ with _no expiration set_ (pages are kept forever and never refreshed from Metal Archives site).
+The cache by default is located in `%LOCALAPPDATA%\.enmet` or `~/.enmet` directory. The cache is handled by a `CachedSession` object from [_requests-cache_](https://requests-cache.readthedocs.io/en/stable/) package. Again by default, this is sqlite database named _enmet_data.sqlite_ with _expiration set to 30 days_ (cached pages are refreshed from Metal Archives site only if they have been kept in cache for at least 30 days).
 
 In order to control caching, you can both obtain the default cache object (for example to clean up old entries) and set your own cache. If you use your own cache, you need to set it each time you use _Enmet_, as there is no persistent configuration for it. The function to manipulate the cache is [`set_session_cache`](#functions).
 

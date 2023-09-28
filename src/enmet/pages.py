@@ -1,6 +1,7 @@
 import re
 import sys
 from abc import ABC
+from datetime import timedelta
 from functools import cached_property, lru_cache
 from os.path import expandvars, expanduser
 from pathlib import Path
@@ -129,7 +130,7 @@ class _CachedSite:
             return self
         if self._session is None:  # Lazy session creation to enable setting cache before it is accessed.
             self._CACHE_PATH.mkdir(parents=True, exist_ok=True)
-            self.set_session()
+            self.set_session(expire_after=timedelta(days=30))
         resource = instance.RESOURCE.format(instance.id, instance.id)
         return self._cached_get(resource)
 
