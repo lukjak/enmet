@@ -66,6 +66,14 @@ def test_band():
     assert len(band.links_labels) == 0
     assert len(band.links_official_merchandise) > 5
     assert len(band.links_official) > 5
+    img_file, img_type, img_data = band.get_band_image()
+    assert isinstance(img_file, str)
+    assert img_type.startswith("image/")
+    assert isinstance(img_data, bytes)
+    img_file, img_type, img_data = band.get_logo_image()
+    assert isinstance(img_file, str)
+    assert img_type.startswith("image/")
+    assert isinstance(img_data, bytes)
 
 
 def test_band_no_formed_in_no_biography():
@@ -86,7 +94,7 @@ def test_band_no_similar_artists():
 
 def test_band_links_labels():
     # then
-    assert len(Band(11949).links_labels) > 1
+    assert len(Band("11949").links_labels) > 1
 
 
 def test_artist():
@@ -107,6 +115,11 @@ def test_artist():
     assert set(a.misc_staff) == {Band("138"), Band("4984"), Band("125"), Band("3540461857"), Band("401"), Band("343"), Band("1831")}
     assert len(a.links) == 10
     assert isinstance(a.last_modified, datetime)
+    img_file, img_type, img_data = a.get_image()
+    assert isinstance(img_file, str)
+    assert img_type.startswith("image/")
+    assert isinstance(img_data, bytes)
+
 
 
 def test_artist_two_extended_sections_first_no_read_more():
@@ -185,6 +198,10 @@ def test_album():
     assert str(album.lineup[0]) == "Udo Dirkschneider"
     assert len(album.other_versions) > 20
     assert isinstance(album.last_modified, datetime)
+    img_file, img_type, img_data = album.get_image()
+    assert isinstance(img_file, str)
+    assert img_type.startswith("image/")
+    assert isinstance(img_data, bytes)
 
 
 def test_search_albums_with_years(mocker):

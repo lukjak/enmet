@@ -136,6 +136,7 @@ class _CachedSite:
 
 
 class _DataPage(_Page, CachedInstance, ABC):
+    """Abstract page of data (response to a data request)"""
 
     enmet = _CachedSite()
 
@@ -150,9 +151,15 @@ class _DataPage(_Page, CachedInstance, ABC):
     def set_session_cache(**kwargs) -> CachedSession:
         return _DataPage.enmet.set_session(**kwargs)
 
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __hash__(self):
+        return self.hash(self.__class__, self.id)
+
     @staticmethod
-    def hash(*args, **kwargs) -> Tuple:
-        return args[0],
+    def hash(cls, *args, **kwargs) -> int:
+        return hash((cls, args[0]))
 
 
 class DiscographyPage(_DataPage):
@@ -254,6 +261,14 @@ class BandPage(_DataPage):
     @cached_property
     def last_modified(self) -> str:
         return self.enmet.find("td", string=re.compile("Last modified on")).text
+
+    @cached_property
+    def logo_image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".band_name_img img")) and link[0]["src"]
+
+    @cached_property
+    def band_image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".band_img img")) and link[0]["src"]
 
 
 class _BandInfoPage(_DataPage):
@@ -432,6 +447,10 @@ class AlbumPage(_DataPage):
     def last_modified(self) -> str:
         return self.enmet.find("td", string=re.compile("Last modified on")).text
 
+    @cached_property
+    def image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".album_img img")) and link[0]["src"]
+
 
 class AlbumVersionsPage(_DataPage):
     RESOURCE = "release/ajax-versions/current/{}/parent/{}"
@@ -555,6 +574,10 @@ class ArtistPage(_DataPage):
     @cached_property
     def last_modified(self) -> str:
         return self.enmet.find("td", string=re.compile("Last modified on")).text
+
+    @cached_property
+    def image_link(self) -> Optional[str]:
+        return (link := self.enmet.select(".member_img img")) and link[0]["src"]
 
 
 
