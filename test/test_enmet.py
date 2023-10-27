@@ -382,7 +382,7 @@ def test_create_default_cache(mocker):
     # then
     assert result == BeautifulSoup("<html />", features="html.parser")
     assert cp_mock.method_calls == [call.mkdir(parents=True, exist_ok=True)]
-    assert call(cache_name=ANY, backend="sqlite") in cs_mock.mock_calls
+    assert call(cache_name=ANY, backend="sqlite", expire_after=ANY) in cs_mock.mock_calls
 
 
 def test_ExternalEntity_dir():
