@@ -81,6 +81,7 @@ class CachedInstance(ABC):
     @abstractmethod
     def hash(cls: Type, *args, **kwargs) -> int:
         """Pseudo-hash to use in __new__."""
+        return NotImplementedError
 
 
 class ReleaseTypes(Enum):

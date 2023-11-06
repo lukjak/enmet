@@ -1,7 +1,7 @@
 import re
 from abc import ABC
 from datetime import datetime, timedelta
-from functools import cached_property, reduce
+from functools import cached_property, reduce, cache
 from inspect import getmembers
 from itertools import chain
 from urllib.parse import urlparse
@@ -118,7 +118,9 @@ class EnmetEntity(Entity, ABC):
 
 class DynamicEnmetEntity(Entity, ABC):
     """Represents entity without its own identity in Enmet, for example disc of an album"""
-
+    @staticmethod
+    def hash(cls, *args, **kwargs) -> int:
+        return hash((cls, args[0], args[1]))
 
 class Band(EnmetEntity):
     """Band or artist performing as a band."""
@@ -258,10 +260,6 @@ class SimilarBand(DynamicEnmetEntity):
     def __hash__(self):
         return self.hash(self.__class__, self.band.id, self.similar_to.id)
 
-    @staticmethod
-    def hash(cls, *args, **kwargs) -> int:
-        return hash((cls, args[0], args[1]))
-
 
 class Album(EnmetEntity):
     def __init__(self, id_: str, /, *, name: str = None, year: int = None):
@@ -352,7 +350,7 @@ class Album(EnmetEntity):
     @cached_property
     def other_versions(self) -> List["Album"]:
         data = AlbumVersionsPage(self.id).other_versions
-        return [Album(url_to_id(item[0])) for item in data]
+        return [Album(url_to_id(item[0]), name=self.name, year=self.year) for item in data]
 
     def get_image(self) -> Tuple[str, str, bytes]:
         return _get_image(self._album_page.image_link)
@@ -381,30 +379,46 @@ class Disc(DynamicEnmetEntity):
     def tracks(self) -> List["Track"]:
         tracks = []
         for t in self._album_page.tracks[self._number]:
-            tracks.append(Track(t[0], self._bands, int(t[1]), t[2], _timestr_to_time(t[3]), t[4]))
+            tracks.append(Track(t[0], t[2], self._bands, int(t[1]), _timestr_to_time(t[3]), t[4], self._album_page.id))
         return tracks
 
     def __hash__(self):
         return self.hash(self.__class__, self._album_page.id, self._number)
 
-    @staticmethod
-    def hash(cls, *args, **kwargs) -> int:
-        return hash((cls, args[0], args[1]))
-
 
 class Track(EnmetEntity):
-    def __init__(self, id_: str, bands: List[Band], number: int, name: str, time: timedelta = None,
-                 lyrics_info: Optional[bool] = None):
+    def __init__(self, id_: str, name: str, bands: List[Band], number: int = None,
+                 time: timedelta = None, lyrics_info: bool = ..., album_id: str = None):
         if not hasattr(self, "id"):
             super().__init__(id_)
-            self.number = number
-            self.time = time
+            self._number = number
+            self._time = time
             self._name = name
             self._lyrics_info = lyrics_info
             self._bands = bands
+            self._album_id = album_id
 
-    def __dir__(self) -> List[str]:
-        return super().__dir__() + ["number", "time"]
+    def __dir__(self):
+        return ["name", "number", "time", "band", "lyrics", "album"]
+
+    @cache
+    def _parse_album_page(self) -> None:
+        track = [tr for disc in AlbumPage(self._album_id).tracks for tr in disc if tr[2].endswith(self.name)][0]
+        self._number = int(track[1])
+        self._time = _timestr_to_time(track[3])
+        self._lyrics_info = track[4]
+
+    @cached_property
+    def number(self) -> int:
+        if self._number is None:
+            self._parse_album_page()
+        return self._number
+
+    @cached_property
+    def time(self) -> timedelta:
+        if self._time is None:
+            self._parse_album_page()
+        return self._time
 
     @cached_property
     def name(self) -> str:
@@ -430,13 +444,24 @@ class Track(EnmetEntity):
 
     @cached_property
     def lyrics(self) -> Optional[Union[bool, str]]:
-        if self._lyrics_info is None:
-            return None  # No information
-        elif self._lyrics_info is False:  # Instrumental
-            return False
-        else:
-            return LyricsPage(self.id).lyrics
+        match self._lyrics_info:
+            case None:
+                return None  # No information
+            case False:  # Instrumental
+                return False
+            case _:
+                info = LyricsPage(self.id).lyrics
+                match info:
+                    case "(lyrics not available)":
+                        return None
+                    case "(Instrumental)":
+                        return False
+                    case _:
+                        return info
 
+    @cached_property
+    def album(self) -> Album:
+        return Album(self._album_id)
 
 class Artist(EnmetEntity):
     """General artist info"""
@@ -540,9 +565,6 @@ class EntityArtist(DynamicEnmetEntity, ABC):
     def __hash__(self):
         return self.hash(self.__class__, self.artist.id, self.role)
 
-    @staticmethod
-    def hash(cls, *args, **kwargs) -> int:
-        return hash((cls, args[0], args[1]))
 
 
 class LineupArtist(EntityArtist):

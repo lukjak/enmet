@@ -2,8 +2,8 @@ from typing import List
 
 from enmet import Countries, country_to_enum_name
 from enmet.common import ReleaseTypes, url_to_id, datestr_to_date
-from enmet.entities import Band, Album
-from enmet.pages import BandSearchPage, AlbumSearchPage, RandomBandPage
+from enmet.entities import Band, Album, Track, ExternalEntity
+from enmet.pages import BandSearchPage, AlbumSearchPage, RandomBandPage, SongSearchPage
 
 __all__ = ["search_albums", "search_bands", "random_band"]
 
@@ -63,6 +63,34 @@ def search_albums(*, name: str = None, strict: bool = None, band: str = None, ba
     return [Album(url_to_id(a[0]), name=a[1], year=datestr_to_date(a[4]).year)
             for a
             in AlbumSearchPage(params).albums]
+
+
+_SONG_SEARCH_FIELDS_MAPPING = {
+    "name": "songTitle",
+    "strict": "exactSongMatch",
+    "band": "bandName",
+    "band_strict": "exactBandMatch",
+    "album": "releaseTitle",
+    "album_strict": "exactReleaseMatch",
+    "lyrics": "lyrics",
+    "genre": "genre",
+    "release_types": "releaseType[]"
+}
+
+
+def search_songs(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None,
+                  album: str = None, album_strict: bool = None, lyrics: str = None, genre: str = None,
+                  release_types: List[ReleaseTypes] = None):
+    if not any(locals().values()):
+        return []
+    params = {_SONG_SEARCH_FIELDS_MAPPING[k]: v or "" for k, v in locals().items()}
+    params[_SONG_SEARCH_FIELDS_MAPPING["release_types"]] = [_RELEASE_TYPE_IDS[rt] for rt in release_types or []]
+    return [Track(s[6],
+                  s[5],
+                  [Band(url_to_id(s[2])) if s[2] else ExternalEntity(s[3])],
+                  album_id=url_to_id(s[0]))
+            for s
+            in SongSearchPage(params).songs]
 
 
 def random_band() -> Band:

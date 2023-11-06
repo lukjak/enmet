@@ -192,8 +192,8 @@ def test_album():
     assert set(dir(album.lineup[0])) == {'active_bands', 'age', 'album', 'biography', 'gender', 'guest_session',
                                          'links', 'misc_staff', 'name', 'name_on_album', 'past_bands', 'place_of_birth',
                                          'real_full_name', 'role', 'trivia', 'last_modified'}
-    assert dir(album.discs[0]) == ['name', 'number', 'total_time', 'tracks']
-    assert dir(album.discs[0].tracks[0]) == ['band', 'lyrics', 'name', 'number', 'time']
+    assert set(dir(album.discs[0])) == {'name', 'number', 'total_time', 'tracks'}
+    assert set(dir(album.discs[0].tracks[0])) == {'album', 'band', 'lyrics', 'name', 'number', 'time'}
     assert "AlbumArtist" in repr(album.lineup[0])
     assert str(album.lineup[0]) == "Udo Dirkschneider"
     assert len(album.other_versions) > 20
@@ -313,7 +313,7 @@ def test_datestr_to_date(datestr, year, month, day):
 def test_Track_no_band_for_track():
     # given
     b1, b2 = SimpleNamespace(name="b1"), SimpleNamespace(name="b2")
-    t = Track("1", [b1, b2], 1, name="test123")
+    t = Track("1", "test123", [b1, b2], 1)
     # then
     with pytest.raises(ValueError):
         _ = t.band
@@ -348,7 +348,7 @@ def test_Album_properties_reviews(mocker):
 def test_track_split_name_without_band():
     # given
     b1, b2 = SimpleNamespace(name="b1"), SimpleNamespace(name="b2")
-    t = Track("123", [b1, b2], 1, "name1")
+    t = Track("123",  "name1", [b1, b2], 1)
     # when
     name = t.name
     # then
