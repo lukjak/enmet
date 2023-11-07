@@ -401,7 +401,6 @@ class Track(EnmetEntity):
     def __dir__(self):
         return ["name", "number", "time", "band", "lyrics", "album"]
 
-    @cache
     def _parse_album_page(self) -> None:
         track = [tr for disc in AlbumPage(self._album_id).tracks for tr in disc if tr[2].endswith(self.name)][0]
         self._number = int(track[1])
@@ -449,19 +448,16 @@ class Track(EnmetEntity):
                 return None  # No information
             case False:  # Instrumental
                 return False
+            case True:
+                return LyricsPage(self.id).lyrics
             case _:
-                info = LyricsPage(self.id).lyrics
-                match info:
-                    case "(lyrics not available)":
-                        return None
-                    case "(Instrumental)":
-                        return False
-                    case _:
-                        return info
+                self._parse_album_page()
+                return self.lyrics
 
     @cached_property
     def album(self) -> Album:
         return Album(self._album_id)
+
 
 class Artist(EnmetEntity):
     """General artist info"""
