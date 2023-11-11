@@ -91,7 +91,8 @@ print(megadeth is megadeth2)
 
 Note: Any optional parameters in constructors that provide values related to an entity and which are not provided when creating the object, are resolved lazily later.
 
-Note: Any "empty" values are returned as `None` or `[]`. This refers both to values nonexistent for a given entity and values with equvalent meaning (like "N/A", "Unknown" etc.).
+Note: Any "empty" values are returned as `None` or `[]`. This refers both to values nonexistent for a given entity 
+and values with equivalent meaning (like "N/A", "Unknown" etc.).
 
 ### Classes
 
@@ -198,26 +199,14 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
     - all remaining attributes and properties are identical as for `Band`.
 - `Track(EnmetEntity)`. This class represents a track on an album. It's a bit different than the other EnmetEntity 
   classes, as tracks don't have their own resources (pages) in The Metal Archives.
-  - `__init__(self, id_: str, name: str, bands: List[Band], number: int = None, time: timedelta = None, lyrics_info: 
-    bool = ..., album_id: str = None):`. `id_` is the track's identifier (actually it's more like lyrics identifier). 
-    `name` is the track's name. `bands` is a list of bands 
-    performing on the `Disc` which the track belongs to. In case of fe. split releases, band is part of the track's 
-    name 
-    displayed in the MA site. `number` is 
-    the track's number on the disc (counter from 1). `time` is the track's duration. `lyrics_info` is lyrics 
-    availability status (`None` if there is no information about lyrics in The MA, `True` if a link to the lyrics is 
-    available, 
-    `False` it 
-    the track is marked as _instrumental_, `...` if this information is missing when object is created). `album_id` 
-    is an identifier of the album the track belongs to.
+  - `__init__(self, id_: str, name: str, bands: List[Band], number: int = None, time: timedelta = None, lyrics_info: bool = ..., album_id: str = None):`. `id_` is the track's identifier (actually it's more like lyrics identifier). `name` is the track's name. `bands` is a list of bands performing on the `Disc` which the track belongs to. In case of fe. split releases, band is part of the track's name displayed in the MA site. `number` is the track's number on the disc (counter from 1). `time` is the track's duration. `lyrics_info` is lyrics availability status (`None` if there is no information about lyrics in The MA, `True` if a link to the lyrics is available, `False` it the track is marked as _instrumental_, `...` if this information is missing when object is created). `album_id` is an identifier of the album the track belongs to.
   - Attributes and properties:
     - `id: str` (it is more like lyrics identifier)
     - `number: int` (the track's number on a disc counted from 1)
     - `time: timedelta` (the track's duration)
     - `name -> str`
     - `band -> Band`
-    - `lyrics -> Optional[Union[bool, str]]` (lyrics: `False` if the track is marked as instrumental, `None` 
-      if there is no track information, lyrics text otherwise)
+    - `lyrics -> Optional[Union[bool, str]]` (lyrics: `False` if the track is marked as instrumental, `None` if there is no track information, lyrics text otherwise)
     - `album -> Album`
 
 
@@ -245,19 +234,14 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
   - `year_from`, `month_from`, `year_to`, `month_to` - time range for album release date
   - `genre` - genre name (substring matching)
   - `release_types` - list of ReleaseType enum members
-- `search_songs(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None, album: str = 
-  None, album_strict: bool = None, lyrics: str = None, genre: str = None, release_types: List[ReleaseTypes] = None) 
-  -> List[Track]`. This function searches for tracks, returning a list of `Track` objects. Parameters:
+- `search_songs(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None, album: str = None, album_strict: bool = None, lyrics: str = None, genre: str = None, release_types: List[ReleaseTypes] = None) -> List[Track]`. This function searches for tracks, returning a list of `Track` objects. Parameters:
   - `name` - track name
   - `strict` - force strict matching for `name` (case-insensitive)
   - `band` - name of a band performing the track
   - `band_strict` - force strict matching for `band_name` (case-insensitive)
   - `album` - name of an album the track appears on
   - `album_strict` - force strict matching for `album` (case-insensitive)
-  - `lyrics` - substring matching for the track's lyrics. If multiple words are provided, they are joined 
-    using 
-    AND operator (so all the words must appear in the lyrics to satisfy the search). To search for an exact phrase, 
-    you need to enclose it in double quotes, fe. `lyrics='"My Valkyrie"'`.
+  - `lyrics` - substring matching for the track's lyrics. If multiple words are provided, they are joined using AND operator (so all the words must appear in the lyrics to satisfy the search). To search for an exact phrase, you need to enclose it in double quotes, fe. `lyrics='"My Valkyrie"'`.
   - `genre` - substring matching for genres of bands performing the track
   - `release_types` - release types to consider during searching
 - `random_band() -> Band` - get a random band from The Metal Archives. This function is used mainly for testing.   

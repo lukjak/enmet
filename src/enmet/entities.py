@@ -308,7 +308,8 @@ class Album(EnmetEntity):
 
     @cached_property
     def reviews(self) -> Tuple[str, str]:
-        return self._album_page.reviews
+        data = self._album_page.reviews
+        return None if data[0] is None else data
 
     @cached_property
     def catalog_id(self) -> str:
@@ -339,7 +340,7 @@ class Album(EnmetEntity):
             reduce(timedelta.__add__, [disc.total_time for disc in self.discs if disc.total_time], timedelta()))
 
     @cached_property
-    def additional_notes(self) -> str:
+    def additional_notes(self) -> Optional[str]:
         return self._album_page.additional_notes
 
     @cached_property
@@ -483,7 +484,7 @@ class Artist(EnmetEntity):
 
     @cached_property
     def age(self) -> str:
-        return self._artist_page.age
+        return _turn_na_into_none(self._artist_page.age)
 
     @cached_property
     def place_of_birth(self) -> str:

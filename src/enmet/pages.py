@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup, Tag, ResultSet, NavigableString
 from requests import get
 from requests_cache import CachedSession
 
-from enmet.common import CachedInstance
+from .common import CachedInstance
 
 __all__ = ["set_session_cache"]
 
@@ -466,8 +466,12 @@ class AlbumPage(_DataPage):
         return self._get_people("#album_members_misc")
 
     @cached_property
-    def additional_notes(self) -> str:
-        return self.enmet.select_one("#album_tabs_notes").text.strip()
+    def additional_notes(self) -> Optional[str]:
+        item = self.enmet.select_one("#album_tabs_notes")
+        if item:
+            return item.text.strip()
+        else:
+            return None
 
     @cached_property
     def last_modified(self) -> str:

@@ -1,11 +1,11 @@
 from typing import List
 
-from enmet import Countries, country_to_enum_name
-from enmet.common import ReleaseTypes, url_to_id, datestr_to_date
-from enmet.entities import Band, Album, Track, ExternalEntity
-from enmet.pages import BandSearchPage, AlbumSearchPage, RandomBandPage, SongSearchPage
+from .countries import Countries, country_to_enum_name
+from .common import ReleaseTypes, url_to_id, datestr_to_date
+from .entities import Band, Album, Track, ExternalEntity
+from .pages import BandSearchPage, AlbumSearchPage, RandomBandPage, SongSearchPage
 
-__all__ = ["search_albums", "search_bands", "random_band"]
+__all__ = ["search_albums", "search_bands", "search_songs", "random_band"]
 
 _RELEASE_TYPE_IDS = {ReleaseTypes.FULL: 1, ReleaseTypes.LIVE: 2, ReleaseTypes.DEMO: 3, ReleaseTypes.SINGLE: 4,
                      ReleaseTypes.EP: 5, ReleaseTypes.VIDEO: 6, ReleaseTypes.BOX: 7, ReleaseTypes.SPLIT: 8,
