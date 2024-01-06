@@ -32,7 +32,7 @@ def test_band():
     assert band.genres == ["Thrash Metal (early/later)", "Heavy Metal/Rock (mid)"]
     assert set(band.lyrical_themes) == set(["Politics", "Love", "Addiction", "History", "Death", "Religion", "Society", "New World Order"])
     assert band.label == "Tradecraft"
-    assert {a.id for a in band.lineup} == {"184", "2836", "3826", "1391"}
+    assert {a.id for a in band.lineup} == {"184", "2836", "1900", "1391"}
     assert repr(band.lineup[0]) == "<LineupArtist: Dave Mustaine (184)>"
     assert str(band.lineup[0]) == "Dave Mustaine"
     assert Artist("184") is band.lineup[0].artist
@@ -59,7 +59,7 @@ def test_band():
                                                  'similar_to', 'status', 'years_active', 'links_labels',
                                                  'links_official', 'links_official_merchandise', 'links_tabulatures',
                                                  'links_unofficial', }
-    assert band.info.startswith("Pictured from left to right")
+    assert band.info.startswith("Contact: webmaster@megadeth.com")
     assert band.last_modified >= datetime(2022, 10, 10, 15, 58, 54)
     assert len(band.links_tabulatures) > 5
     assert len(band.links_unofficial) > 3
@@ -337,12 +337,12 @@ def test_Album_properties_reviews(mocker):
         text = "text123"
 
         def select_one(self, _):
-            return None
+            return {"href": "abc"}
     mocker.patch("enmet.pages._DataPage._get_header_item", lambda p1, p2: Dummy())
     # when
     b = Album("dummy").reviews
     # then
-    assert b == (None, "text123")
+    assert b == ("abc", "text123")
 
 
 def test_track_split_name_without_band():
