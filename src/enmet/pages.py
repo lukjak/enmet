@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup, Tag, ResultSet, NavigableString
 from requests import get
 from requests_cache import CachedSession
 
-from enmet.common import CachedInstance
+from .common import CachedInstance
 
 __all__ = ["set_session_cache"]
 
@@ -90,6 +90,32 @@ class AlbumSearchPage(_SearchResultsPage):
             album_link, album = bs.select_one("a")["href"], bs.select_one("a").text
             release_date = item[3][:item[3].find("<")]
             result.append((album_link, album, band_link, band, release_date))
+        return result
+
+
+class SongSearchPage(_SearchResultsPage):
+    RESOURCE = "search/ajax-advanced/searching/songs/"
+
+    @cached_property
+    def songs(self) -> List:
+        records = self._fetch_search_result()
+        result = []
+        for item in records:
+            bs = BeautifulSoup(item[0], features="html.parser")
+            try:
+                band_link = bs.select_one("a")["href"]
+            except TypeError:  # Song for a band not in MA
+                band_link = None
+                band = bs.select_one("span").text
+            else:
+                band = bs.select_one("a").text
+            bs = BeautifulSoup(item[1], features="html.parser")
+            album_link, album = bs.select_one("a")["href"], bs.select_one("a").text
+            release_type = item[2]
+            name = item[3]
+            bs = BeautifulSoup(item[4], features="html.parser")
+            id_ = bs.select_one("a")["id"].split("_")[1]
+            result.append((album_link, album, band_link, band, release_type, name, id_))
         return result
 
 
@@ -391,22 +417,22 @@ class AlbumPage(_DataPage):
                 if len(result[0]) != 0:  # Another disc
                     result.append([])
                 continue
-            # Id
+            # Lyrics id - 0
             result[-1].append([elem.select_one("td:nth-of-type(1) a")["name"]])
-            # Number
+            # Number - 1
             number = elem.select_one("td:nth-of-type(1)").text
             result[-1][-1].append(number[:number.index(".")])
-            # Name
+            # Name - 2
             result[-1][-1].append(elem.select_one("td:nth-of-type(2)").text.strip())
-            # Time
+            # Time - 3
             result[-1][-1].append(elem.select_one("td:nth-of-type(3)").text)
-            # Lyrics status
+            # Lyrics status - 4
             lyrics = elem.select_one("td:nth-of-type(4)")
             if lyrics.select_one("a"):  # Has lyrics
                 result[-1][-1].append(True)
             elif lyrics.select_one("em"):  # Marked as instrumental
                 result[-1][-1].append(False)
-            else:
+            else:  # Unknown
                 result[-1][-1].append(None)
         return result
 
@@ -440,8 +466,12 @@ class AlbumPage(_DataPage):
         return self._get_people("#album_members_misc")
 
     @cached_property
-    def additional_notes(self) -> str:
-        return self.enmet.select_one("#album_tabs_notes").text.strip()
+    def additional_notes(self) -> Optional[str]:
+        item = self.enmet.select_one("#album_tabs_notes")
+        if item:
+            return item.text.strip()
+        else:
+            return None
 
     @cached_property
     def last_modified(self) -> str:
