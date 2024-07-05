@@ -110,7 +110,7 @@ def test_artist():
                            'past_bands', 'place_of_birth', 'real_full_name', 'trivia', 'last_modified'}
     assert list(a.active_bands.keys()) == [Band("138")]
     assert set(a.past_bands) == {Band("3540464105"), Band("4984"), Band("125"), Band("3540461857"),
-                                 ExternalEntity("Fallen Angels", role="Vocals, Guitars (1983)"), ExternalEntity("Panic", role="Guitars (?-1981)")}
+                                 ExternalEntity("Fallen Angels", role="Vocals, Guitars (1983)"), ExternalEntity("Panic", role="Guitars (1978-1981)")}
     assert set(a.guest_session) == {Band("401"), Band("37"), Band("706"), Band("343"), Band("59")}
     assert set(a.misc_staff) == {Band("138"), Band("4984"), Band("125"), Band("3540461857"), Band("401"), Band("343"), Band("1831")}
     assert len(a.links) == 10

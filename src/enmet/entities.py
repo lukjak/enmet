@@ -122,6 +122,7 @@ class DynamicEnmetEntity(Entity, ABC):
     def hash(cls, *args, **kwargs) -> int:
         return hash((cls, args[0], args[1]))
 
+
 class Band(EnmetEntity):
     """Band or artist performing as a band."""
     def __init__(self, id_: str, *, name: str = None, country: Countries = None, genres: str = None):
