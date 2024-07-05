@@ -85,13 +85,14 @@ megadeth = enmet.search_bands(name="Megadeth")[0]
 megadeth2 = enmet.Band("138")
 print(megadeth is megadeth2)
 ```
-- To optimise memory usage, only actually used objects are cached. Once an object is nowehere referenced in your code, it is removed from the cache.
+- To optimise memory usage, only actually used objects are cached. Once an object is nowhere referenced in your code, it is removed from the cache.
 
 ## Reference manual
 
 Note: Any optional parameters in constructors that provide values related to an entity and which are not provided when creating the object, are resolved lazily later.
 
-Note: Any "empty" values are returned as `None` or `[]`. This refers both to values nonexistent for a given entity and values with equvalen meaning (like "N/A", "Unknown" etc.).
+Note: Any "empty" values are returned as `None` or `[]`. This refers both to values nonexistent for a given entity 
+and values with equivalent meaning (like "N/A", "Unknown" etc.).
 
 ### Classes
 
@@ -99,24 +100,24 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
   - `__init__(self, id_: str, *, name: str = None, year: int = None)` `id_` is album identifier in Metal Archives. `name` is album name as appearing on the album's page. `year` is album release year.
   - Attributes and properties:
     - `id: str` - identifier
-    - `name(self) -> str`
-    - `bands(self) -> List[Band]`
-    - `type(self) -> ReleaseTypes`
-    - `year(self) -> int`
-    - `release_date(self) -> PartialDate`
-    - `label(self) -> str`
-    - `format(self) -> str`
-    - `reviews(self) -> Tuple[str, str]`
-    - `discs(self) -> List[Disc]`
-    - `lineup(self) -> List[AlbumArtist]`
-    - `total_time(self) -> timedelta`
-    - `guest_session_musicians(self) -> List["AlbumArtist"]`
-    - `other_staff(self) -> List["AlbumArtist"]`
-    - `additional_notes(self) -> str`
-    - `last_modified(self) -> datetime` (time of the last modification of the album's page)
-    - `other_versions(self) -> List["Album"]`
+    - `name -> str`
+    - `bands -> List[Band]`
+    - `type -> ReleaseTypes`
+    - `year -> int`
+    - `release_date -> PartialDate`
+    - `label -> str`
+    - `format -> str`
+    - `reviews -> Tuple[str, str]`
+    - `discs -> List[Disc]`
+    - `lineup -> List[AlbumArtist]`
+    - `total_time -> timedelta`
+    - `guest_session_musicians -> List["AlbumArtist"]`
+    - `other_staff -> List["AlbumArtist"]`
+    - `additional_notes -> str`
+    - `last_modified -> datetime` (time of the last modification of the album's page)
+    - `other_versions -> List["Album"]`
   - Methods: 
-    - `def get_image(self) -> Tuple[str, str, bytes]` - album image: original file name, MIME type, binary data
+    - `get_image() -> Tuple[str, str, bytes]` - album image: original file name, MIME type, binary data
 - `AlbumArtist(_EntityArtist)`. This class represent an artist performing on a specific album.
   - `__init__(self, id_: str, album_id: str, *, name: str = None, role: str = None)`. `id_` is the artist's identifier in Metal Archives. `album_id` is an album's identifier. `name` is the artist's name as stated on the album. `role` is the artist's role on the album.
   - Attributes and properties:
@@ -128,56 +129,56 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
   - `__init__(self, id_)`. `id_` is artist identifier in Metal Archives.
   - Attributes and properties:
     - `id: str` - identifier
-    - `name(self) -> str`
-    - `real_full_name(self) -> str`
-    - `age(self) -> str`
-    - `place_of_birth(self) -> str`
-    - `gender(self) -> str`
-    - `biography(self) -> str`
-    - `trivia(self) -> str`
-    - `active_bands(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
-    - `past_bands(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
-    - `guest_session(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
-    - `misc_staff(self) -> Dict[Union[Band, ExternalEntity], List[Album]]`
-    - `links(self) -> List[Tuple[str, str]]`
-    - `last_modified(self) -> datetime` (time of the last modification of the artist's page)
+    - `name -> str`
+    - `real_full_name -> str`
+    - `age -> str`
+    - `place_of_birth -> str`
+    - `gender -> str`
+    - `biography -> str`
+    - `trivia -> str`
+    - `active_bands -> Dict[Union[Band, ExternalEntity], List[Album]]`
+    - `past_bands -> Dict[Union[Band, ExternalEntity], List[Album]]`
+    - `guest_session -> Dict[Union[Band, ExternalEntity], List[Album]]`
+    - `misc_staff -> Dict[Union[Band, ExternalEntity], List[Album]]`
+    - `links -> List[Tuple[str, str]]`
+    - `last_modified -> datetime` (time of the last modification of the artist's page)
   - Methods: 
-    - `def get_image(self) -> Tuple[str, str, bytes]` - artist image: original file name, MIME type, binary data 
+    - `get_image() -> Tuple[str, str, bytes]` - artist image: original file name, MIME type, binary data 
 - `Band(EnmetEntity)`. This class represents a band.
   - `__init__(self, id_: str, *, name: str = None, country: Countries = None)`. `id_` is the band's identifier in Metal Archives. `name` is the band's name as stated on the band's page. `country` is the band's country of origin.
   - Attributes and properties:
     - `id: str` - identifier
-    - `name(self) -> str`
-    - `country(self) -> Countries`
-    - `location(self) -> str`
-    - `formed_in(self) -> int`
-    - `years_active(self) -> List[str]`
-    - `genres(self) -> List[str]`
-    - `lyrical_themes(self) -> List[str]`
-    - `label(self) -> str` (current or last known)
-    - `lineup(self) -> List["LineupArtist"]` (current or last known)
-    - `discography(self) -> List["Album"]`
-    - `similar_artists(self) -> List["SimilarBand"]` (Note: There is naming inconseqence here on Metal Archives page - this list refers to bands, not artists, ie. persons. Property name follows Metal Archives wording, but otherwise the notion of "band" is used.)
-    - `past_members(self) -> List["LineupArtist"]`
-    - `live_musicians(self) -> List["LineupArtist"]`
-    - `info(self) -> str` (free text information below header items)
-    - `last_modified(self) -> datetime` (date of the last band page modification)
-    - `status(self) -> Optional[BandStatuses]`
-    - `links_official(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
-    - `links_official_merchandise(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
-    - `links_unofficial(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
-    - `links_labels(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
-    - `links_tabulatures(self) -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
+    - `name -> str`
+    - `country -> Countries`
+    - `location -> str`
+    - `formed_in -> int`
+    - `years_active -> List[str]`
+    - `genres -> List[str]`
+    - `lyrical_themes -> List[str]`
+    - `label -> str` (current or last known)
+    - `lineup -> List["LineupArtist"]` (current or last known)
+    - `discography -> List["Album"]`
+    - `similar_artists -> List["SimilarBand"]` (Note: There is naming inconseqence here on Metal Archives page - this list refers to bands, not artists, ie. persons. Property name follows Metal Archives wording, but otherwise the notion of "band" is used.)
+    - `past_members -> List["LineupArtist"]`
+    - `live_musicians -> List["LineupArtist"]`
+    - `info -> str` (free text information below header items)
+    - `last_modified -> datetime` (date of the last band page modification)
+    - `status -> Optional[BandStatuses]`
+    - `links_official -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
+    - `links_official_merchandise -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
+    - `links_unofficial -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
+    - `links_labels -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
+    - `links_tabulatures -> List[Tuple[str, str]]` (returns list or tuples- url, page name)
   - Methods: 
-    - `def get_band_image(self) -> Tuple[str, str, bytes]` - band image: original file name, MIME type, binary data 
-    - `def get_logo_image(self) -> Tuple[str, str, bytes]` - logo image: original file name, MIME type, binary data
+    - `get_band_image() -> Tuple[str, str, bytes]` - band image: original file name, MIME type, binary data 
+    - `get_logo_image() -> Tuple[str, str, bytes]` - logo image: original file name, MIME type, binary data
 - `Disc(DynamicEnmetEntity)`. This class represents a disc of an album. More precisely, it is a container which holds some or all tracks of the album. Except for a CD, it can be in fact a physical cassette, VHS, DVD or even arbitrary partition in case of electronic releases - whatever Metal Archives considers a "disc". 
   - `__init__(self, album_id: str, number: int = 0, bands: List[Band] = None)`. `album_id` is id of an album the disc belongs to. `number` is ordinal number of the disc on the album (counted from 0). `bands` is a list of bands that perform tracks on the disc.
   - Attributes and properties:
-    - `number(self) ->int` (disc number on the album counted from 1)
-    - `name(self) -> Optional[str]` (disc name or None if the disc has no specific name)
-    - `total_time(self) -> timedelta`
-    - `tracks(self) -> List["Track"]`
+    - `number ->int` (disc number on the album counted from 1)
+    - `name -> Optional[str]` (disc name or None if the disc has no specific name)
+    - `total_time -> timedelta`
+    - `tracks -> List["Track"]`
 - `ExternalEntity(Entity)`. This class represents entity external to Metal Archives, for example band or artist which appear on metal albums, but is not represented in Metal Archives itself.
   - `__init__(self, name: str):` `name` is data to store for the entity.
   - Attributes and properties:
@@ -196,14 +197,17 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
     - `similar_to: Band` - the band given band is similar to
     - `score: int` - similarity score.
     - all remaining attributes and properties are identical as for `Band`.
-- `Track(EnmetEntity)`. This class represents a track on an album. It's a bit different than the other EnmetEntity classes, as tracks don't have their own resources (pages) in Metal Archives.
-  - `__init__(self, id_, bands: List[Band], number: int = None, name: str = None, time: timedelta = None, lyrics_info: Optional[bool] = None)`. `id_` a track's identifier. `bands` is a list of bands performing on the `Disc` which the track belongs to. `number` is the track's number on the disc (counter from 1). `name` is the track's name. `time` is the track's duration. `lyrics_info` is lyrics availability status (`None` if there is no information, `True` if a link to the lyrics is available, `False` it the track is marked as _instrumental_).
+- `Track(EnmetEntity)`. This class represents a track on an album. It's a bit different than the other EnmetEntity 
+  classes, as tracks don't have their own resources (pages) in The Metal Archives.
+  - `__init__(self, id_: str, name: str, bands: List[Band], number: int = None, time: timedelta = None, lyrics_info: bool = ..., album_id: str = None):`. `id_` is the track's identifier (actually it's more like lyrics identifier). `name` is the track's name. `bands` is a list of bands performing on the `Disc` which the track belongs to. In case of fe. split releases, band is part of the track's name displayed in the MA site. `number` is the track's number on the disc (counter from 1). `time` is the track's duration. `lyrics_info` is lyrics availability status (`None` if there is no information about lyrics in The MA, `True` if a link to the lyrics is available, `False` it the track is marked as _instrumental_, `...` if this information is missing when object is created). `album_id` is an identifier of the album the track belongs to.
   - Attributes and properties:
+    - `id: str` (it is more like lyrics identifier)
     - `number: int` (the track's number on a disc counted from 1)
     - `time: timedelta` (the track's duration)
-    - `name(self) -> str`
-    - `band(self) -> Band`
-    - `lyrics(self) -> Optional[Union[bool, str]]` (lyrics; `False` if the track is marked as instrumental, `None` if there is no track informaction, lyrics text otherwise)
+    - `name -> str`
+    - `band -> Band`
+    - `lyrics -> Optional[Union[bool, str]]` (lyrics: `False` if the track is marked as instrumental, `None` if there is no track information, lyrics text otherwise)
+    - `album -> Album`
 
 
 ### Functions
@@ -219,7 +223,10 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
   - `genre` - genre name (substring matching)
   - `countries` - list of Countries enum members
   - `formed_from` and `formed_to` - year range for band formation
-- `search_albums(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None, year_from: int = None, month_from: int = None, year_to: int = None, month_to: int = None, genre: str = None, release_types: List[ReleaseTypes] = None)`. This function searches for albums, returning a list of `Album` objects. Parameters:
+- `search_albums(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None, year_from: 
+  int = None, month_from: int = None, year_to: int = None, month_to: int = None, genre: str = None, release_types: 
+  List[ReleaseTypes] = None) -> List[Album]`. This function searches for albums, returning a list of `Album` objects. 
+  Parameters:
   - `name` - album name
   - `strict` - force strict matching for `name` (case-insensitive)
   - `band` - name of a band performing the album
@@ -227,6 +234,16 @@ Note: Any "empty" values are returned as `None` or `[]`. This refers both to val
   - `year_from`, `month_from`, `year_to`, `month_to` - time range for album release date
   - `genre` - genre name (substring matching)
   - `release_types` - list of ReleaseType enum members
+- `search_songs(*, name: str = None, strict: bool = None, band: str = None, band_strict: bool = None, album: str = None, album_strict: bool = None, lyrics: str = None, genre: str = None, release_types: List[ReleaseTypes] = None) -> List[Track]`. This function searches for tracks, returning a list of `Track` objects. Parameters:
+  - `name` - track name
+  - `strict` - force strict matching for `name` (case-insensitive)
+  - `band` - name of a band performing the track
+  - `band_strict` - force strict matching for `band_name` (case-insensitive)
+  - `album` - name of an album the track appears on
+  - `album_strict` - force strict matching for `album` (case-insensitive)
+  - `lyrics` - substring matching for the track's lyrics. If multiple words are provided, they are joined using AND operator (so all the words must appear in the lyrics to satisfy the search). To search for an exact phrase, you need to enclose it in double quotes, fe. `lyrics='"My Valkyrie"'`.
+  - `genre` - substring matching for genres of bands performing the track
+  - `release_types` - release types to consider during searching
 - `random_band() -> Band` - get a random band from The Metal Archives. This function is used mainly for testing.   
 
 ### Enums

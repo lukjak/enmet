@@ -32,7 +32,7 @@ def test_band():
     assert band.genres == ["Thrash Metal (early/later)", "Heavy Metal/Rock (mid)"]
     assert set(band.lyrical_themes) == set(["Politics", "Love", "Addiction", "History", "Death", "Religion", "Society", "New World Order"])
     assert band.label == "Tradecraft"
-    assert {a.id for a in band.lineup} == {"184", "2836", "3826", "1391"}
+    assert {a.id for a in band.lineup} == {"184", "2836", "1900", "1391"}
     assert repr(band.lineup[0]) == "<LineupArtist: Dave Mustaine (184)>"
     assert str(band.lineup[0]) == "Dave Mustaine"
     assert Artist("184") is band.lineup[0].artist
@@ -59,7 +59,7 @@ def test_band():
                                                  'similar_to', 'status', 'years_active', 'links_labels',
                                                  'links_official', 'links_official_merchandise', 'links_tabulatures',
                                                  'links_unofficial', }
-    assert band.info.startswith("Pictured from left to right")
+    assert band.info.startswith("Contact: webmaster@megadeth.com")
     assert band.last_modified >= datetime(2022, 10, 10, 15, 58, 54)
     assert len(band.links_tabulatures) > 5
     assert len(band.links_unofficial) > 3
@@ -110,7 +110,7 @@ def test_artist():
                            'past_bands', 'place_of_birth', 'real_full_name', 'trivia', 'last_modified'}
     assert list(a.active_bands.keys()) == [Band("138")]
     assert set(a.past_bands) == {Band("3540464105"), Band("4984"), Band("125"), Band("3540461857"),
-                                 ExternalEntity("Fallen Angels", role="Vocals, Guitars (1983)"), ExternalEntity("Panic", role="Guitars (?-1981)")}
+                                 ExternalEntity("Fallen Angels", role="Vocals, Guitars (1983)"), ExternalEntity("Panic", role="Guitars (1978-1981)")}
     assert set(a.guest_session) == {Band("401"), Band("37"), Band("706"), Band("343"), Band("59")}
     assert set(a.misc_staff) == {Band("138"), Band("4984"), Band("125"), Band("3540461857"), Band("401"), Band("343"), Band("1831")}
     assert len(a.links) == 10
@@ -192,8 +192,8 @@ def test_album():
     assert set(dir(album.lineup[0])) == {'active_bands', 'age', 'album', 'biography', 'gender', 'guest_session',
                                          'links', 'misc_staff', 'name', 'name_on_album', 'past_bands', 'place_of_birth',
                                          'real_full_name', 'role', 'trivia', 'last_modified'}
-    assert dir(album.discs[0]) == ['name', 'number', 'total_time', 'tracks']
-    assert dir(album.discs[0].tracks[0]) == ['band', 'lyrics', 'name', 'number', 'time']
+    assert set(dir(album.discs[0])) == {'name', 'number', 'total_time', 'tracks'}
+    assert set(dir(album.discs[0].tracks[0])) == {'album', 'band', 'lyrics', 'name', 'number', 'time'}
     assert "AlbumArtist" in repr(album.lineup[0])
     assert str(album.lineup[0]) == "Udo Dirkschneider"
     assert len(album.other_versions) > 20
@@ -313,7 +313,7 @@ def test_datestr_to_date(datestr, year, month, day):
 def test_Track_no_band_for_track():
     # given
     b1, b2 = SimpleNamespace(name="b1"), SimpleNamespace(name="b2")
-    t = Track("1", [b1, b2], 1, name="test123")
+    t = Track("1", "test123", [b1, b2], 1)
     # then
     with pytest.raises(ValueError):
         _ = t.band
@@ -337,18 +337,18 @@ def test_Album_properties_reviews(mocker):
         text = "text123"
 
         def select_one(self, _):
-            return None
+            return {"href": "abc"}
     mocker.patch("enmet.pages._DataPage._get_header_item", lambda p1, p2: Dummy())
     # when
     b = Album("dummy").reviews
     # then
-    assert b == (None, "text123")
+    assert b == ("abc", "text123")
 
 
 def test_track_split_name_without_band():
     # given
     b1, b2 = SimpleNamespace(name="b1"), SimpleNamespace(name="b2")
-    t = Track("123", [b1, b2], 1, "name1")
+    t = Track("123",  "name1", [b1, b2], 1)
     # when
     name = t.name
     # then
