@@ -1,13 +1,13 @@
 import re
 from abc import ABC
 from datetime import datetime, timedelta
-from functools import cached_property, reduce, cache
+from functools import cached_property, reduce
 from inspect import getmembers
 from itertools import chain
+from typing import List, Iterable, Optional, Tuple, Union, Dict
 from urllib.parse import urlparse
 
 import requests
-from typing import List, Iterable, Optional, Tuple, Union, Dict
 
 from .common import CachedInstance, ReleaseTypes, url_to_id, datestr_to_date, PartialDate, BandStatuses
 from .countries import Countries, country_to_enum_name

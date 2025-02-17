@@ -1,12 +1,13 @@
 import re
+import string
 import sys
 from abc import ABC
 from datetime import timedelta
-from functools import cached_property, lru_cache
+from functools import cached_property, lru_cache, wraps, reduce
 from os.path import expandvars, expanduser
 from pathlib import Path
 from time import sleep
-from typing import List, Tuple, Union, Optional, Type, Dict
+from typing import List, Tuple, Union, Optional, Type, Dict, Callable
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag, ResultSet, NavigableString
@@ -26,6 +27,47 @@ _USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHT
 def _split_by_sep(data: str) -> List[str]:
     """Split different text list (genres, lyrical themes etc.) into separate parts."""
     return re.split(r"\s*[,;]\s*", data.strip())
+
+
+def _transform_str_data(data: List | str, fun: Callable[[str], str]) -> List | str:
+    """Process a freely embedded lists of items preserving structure; strings are processed with fun."""
+    if isinstance(data, str):
+        return fun(data)
+    # As recursive is boring:
+    data = list(data)
+    sentinel = Ellipsis
+    output = [[]]
+    while data:
+        item = data.pop(0)
+        if item is sentinel:
+            output.pop()
+        elif isinstance(item, str):
+            output[-1].append(fun(item))
+        elif not isinstance(item, list):  # Pass through unknown items
+            output[-1].append(item)
+        else:
+            new_out_list = []
+            output[-1].append(new_out_list)
+            output.append(new_out_list)
+            data = item + [sentinel] + data
+    return output[0]
+
+
+def _cleanup_func(item):
+    if item == "":
+        return item
+    else:
+        return reduce(lambda a, b: a if a[-1] == " " and b == " " else a + b,
+                      item.strip().translate(str.maketrans(string.whitespace, " " * len(string.whitespace))))
+
+
+def _cleanup_text(fun: Callable) -> Callable:
+    """Decorator - clean up excessive whitespaces from output. Supports lists (possibly embedded) and strings."""
+    @wraps(fun)
+    def _text_cleaner(self):
+        data = fun(self)
+        return _transform_str_data(data, _cleanup_func)
+    return _text_cleaner
 
 
 class _Page(ABC):
@@ -134,7 +176,7 @@ class _CachedSite:
     def set_session(self, **kwargs) -> CachedSession:
         """Factory method for CachedSession with delay hook."""
         session = CachedSession(
-            **({"cache_name": str(self._CACHE_PATH / self._CACHE_NAME), "backend": "sqlite"} | kwargs))
+            **({"cache_name": str(self._CACHE_PATH / self._CACHE_NAME), "backend": "sqlite", "cache_control": True} | kwargs))
         session.hooks['response'].append(
             lambda r, *args, **kwargs: None if not getattr(r, "from_cache", False) and sleep(
                 1 / _CachedSite.QUERY_RATE) else None)
@@ -233,8 +275,9 @@ class BandPage(_DataPage):
         return elem.text if (elem := self._get_header_item("Formed in:")) else None
 
     @cached_property
+    @_cleanup_text
     def years_active(self):
-        return _split_by_sep(self._get_header_item("Years active:").text.strip())
+        return _split_by_sep(self._get_header_item("Years active:").text)
 
     @cached_property
     def genres(self) -> List[str]:
@@ -410,6 +453,7 @@ class AlbumPage(_DataPage):
             return None, elem.text
 
     @cached_property
+    @_cleanup_text
     def tracks(self) -> List[List[Union[int, str, Optional[bool]]]]:
         result = [[]]
         for elem in self.enmet.select_one("#album_tabs_tracklist").select("tr.even,tr.odd,.discRow"):
@@ -423,7 +467,7 @@ class AlbumPage(_DataPage):
             number = elem.select_one("td:nth-of-type(1)").text
             result[-1][-1].append(number[:number.index(".")])
             # Name - 2
-            result[-1][-1].append(elem.select_one("td:nth-of-type(2)").text.strip())
+            result[-1][-1].append(elem.select_one("td:nth-of-type(2)").text)
             # Time - 3
             result[-1][-1].append(elem.select_one("td:nth-of-type(3)").text)
             # Lyrics status - 4
@@ -583,6 +627,7 @@ class ArtistPage(_DataPage):
                     album_role, name_on_album = match.group(1), match.group(2)
                 # Add album entry for the band to results
                 result[key].append([album_url, album_name, album_role, name_on_album])
+        result = {tuple(_transform_str_data(list(key), _cleanup_func)): value for key, value in result.items()}
         return result
 
     @cached_property
