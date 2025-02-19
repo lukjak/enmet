@@ -29,31 +29,35 @@ def _split_by_sep(data: str) -> List[str]:
     return re.split(r"\s*[,;]\s*", data.strip())
 
 
-def _transform_str_data(data: List | str, fun: Callable[[str], str]) -> List | str:
-    """Process a freely embedded lists of items preserving structure; strings are processed with fun."""
+def _transform_str_data(data: List | str, function: Callable[[str], str]) -> List | Tuple | str:
+    """Process a freely embedded lists of items preserving structure - strings are processed with "function"."""
     if isinstance(data, str):
-        return fun(data)
+        return function(data)
     # As recursive is boring:
-    data = list(data)
+    in_data = list(data)
     sentinel = Ellipsis
     output = [[]]
-    while data:
-        item = data.pop(0)
+    while in_data:
+        item = in_data.pop(0)
         if item is sentinel:
             output.pop()
         elif isinstance(item, str):
-            output[-1].append(fun(item))
+            output[-1].append(function(item))
         elif not isinstance(item, list):  # Pass through unknown items
             output[-1].append(item)
         else:
             new_out_list = []
             output[-1].append(new_out_list)
             output.append(new_out_list)
-            data = item + [sentinel] + data
-    return output[0]
+            in_data = item + [sentinel] + in_data
+    if isinstance(data, tuple):
+        return tuple(output[0])
+    else:
+        return output[0]
 
 
 def _cleanup_func(item):
+    """General single-line plain text cleaning."""
     if item == "":
         return item
     else:
@@ -178,8 +182,7 @@ class _CachedSite:
         session = CachedSession(
             **({"cache_name": str(self._CACHE_PATH / self._CACHE_NAME), "backend": "sqlite", "cache_control": True} | kwargs))
         session.hooks['response'].append(
-            lambda r, *args, **kwargs: None if not getattr(r, "from_cache", False) and sleep(
-                1 / _CachedSite.QUERY_RATE) else None)
+            lambda r, *args, **kwargs: None if not getattr(r, "from_cache", False) and sleep(1 / _CachedSite.QUERY_RATE) else None)
         self._session = session
         return session
 
@@ -445,6 +448,7 @@ class AlbumPage(_DataPage):
         return self._get_header_item("Format:").text
 
     @cached_property
+    @_cleanup_text
     def reviews(self) -> Tuple[Optional[str], str]:
         elem = self._get_header_item("Reviews:")
         if elem.select_one("a"):

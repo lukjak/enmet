@@ -82,7 +82,7 @@ def test_band_no_formed_in_no_biography():
     # then
     assert b.formed_in is None
     assert b.info.startswith("Compilation")
-    # assert b.lineup[1].biography is None  # no Trivia or Biography section
+    assert b.lineup[1].biography is None  # no Trivia or Biography section
 
 
 def test_band_no_similar_artists():
