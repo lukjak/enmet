@@ -2,7 +2,7 @@ import logging
 from abc import abstractmethod, ABC
 from enum import Enum
 from pathlib import PurePath
-from typing import Tuple, Type
+from typing import Type
 from urllib.parse import urlparse
 from weakref import WeakValueDictionary
 

@@ -82,7 +82,7 @@ def test_band_no_formed_in_no_biography():
     # then
     assert b.formed_in is None
     assert b.info.startswith("Compilation")
-    # assert b.lineup[1].biography is None  # no Trivia or Biography section
+    assert b.lineup[1].biography is None  # no Trivia or Biography section
 
 
 def test_band_no_similar_artists():
@@ -110,8 +110,8 @@ def test_artist():
                            'past_bands', 'place_of_birth', 'real_full_name', 'trivia', 'last_modified'}
     assert list(a.active_bands.keys()) == [Band("138")]
     assert set(a.past_bands) == {Band("3540464105"), Band("4984"), Band("125"), Band("3540461857"),
-                                 ExternalEntity("Fallen Angels", role="Vocals, Guitars (1983)"), ExternalEntity("Panic", role="Guitars (1978-1981)")}
-    assert set(a.guest_session) == {Band("401"), Band("37"), Band("706"), Band("343"), Band("59")}
+                                 ExternalEntity("Panic", role="Guitars (1978-1981)"), ExternalEntity("Fallen Angels", role="Vocals, Guitars (1983)")}
+    assert set(a.guest_session) == {Band("401"), Band("37"), Band("706"), Band("343"), Band("59"), Band("3540554953")}
     assert set(a.misc_staff) == {Band("138"), Band("4984"), Band("125"), Band("3540461857"), Band("401"), Band("343"), Band("1831")}
     assert len(a.links) == 10
     assert isinstance(a.last_modified, datetime)
@@ -177,7 +177,7 @@ def test_album():
     assert album.catalog_id == "PL 70638"
     assert album.label == "RCA"
     assert album.format == '12" vinyl (33⅓ RPM)'
-    assert album.reviews == ('https://www.metal-archives.com/reviews/Accept/Metal_Heart/826/', '\n12 reviews (avg. 78%)\n')
+    assert album.reviews == ('https://www.metal-archives.com/reviews/Accept/Metal_Heart/826/', '12 reviews (avg. 78%)')
     assert album.total_time == timedelta(minutes=39, seconds=55)
     assert repr(album) == "<Album: Metal Heart (826)>"
     assert str(album) == "Metal Heart (1985)"
@@ -185,7 +185,7 @@ def test_album():
     assert album.discs[0].tracks[0].band is Band("198")
     assert album.year == 1985
     assert len(album.other_staff) == 8
-    assert album.additional_notes.startswith("Trivia")
+    assert album.additional_notes.startswith("Music videos")
     assert set(dir(album)) == {'additional_notes', 'bands', 'catalog_id', 'discs', 'format', 'guest_session_musicians',
                                'label', 'lineup', 'name', 'other_staff', 'release_date', 'reviews', 'total_time',
                                'type', 'year', 'other_versions', 'last_modified'}
@@ -357,8 +357,8 @@ def test_track_split_name_without_band():
 
 def test_track_get_cached_instance():
     # given
-    t1 = Track("123", [1, 2], 1, "")
-    t2 = Track("123", [1, 2], 1, "")
+    t1 = Track("123", "track1", [1, 2],1, "")
+    t2 = Track("123", "track1", [1, 2], 1, "")
     # then
     assert t1 is t2
 
@@ -399,7 +399,7 @@ def test_create_default_cache(mocker):
     # then
     assert result == BeautifulSoup("<html />", features="html.parser")
     assert cp_mock.method_calls == [call.mkdir(parents=True, exist_ok=True)]
-    assert call(cache_name=ANY, backend="sqlite", expire_after=ANY) in cs_mock.mock_calls
+    assert call(cache_name=ANY, backend="sqlite", cache_control=True, expire_after=ANY) in cs_mock.mock_calls
 
 
 def test_ExternalEntity_dir():

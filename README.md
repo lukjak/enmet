@@ -63,9 +63,15 @@ There are two ways of creating the entity objects: search functions and standard
 
 Working with a web site is costly in terms of time - fetching each page takes significant amount of time. Thus _Enmet_ uses on-disk cache to keep and reuse data pages downloaded from Metal Archives. The next time a page is needed, it is picked up from the local cache file instead of getting it from the web.
 
-Searches, which also involve requesting data from Metal Archives, at NOT cached - each search fetches a new result. 
+Searches, which also involve requesting data from Metal Archives, are NOT cached - each search fetches a new result. 
 
-The cache by default is located in `%LOCALAPPDATA%\.enmet` or `~/.enmet` directory. The cache is handled by a `CachedSession` object from [_requests-cache_](https://requests-cache.readthedocs.io/en/stable/) package. Again by default, this is sqlite database named _enmet_data.sqlite_ with _expiration set to 30 days_ (cached pages are refreshed from Metal Archives site only if they have been kept in cache for at least 30 days).
+The cache by default is located in `%LOCALAPPDATA%\.enmet` or `~/.enmet` directory. The cache is handled by a 
+`CachedSession` object from [_requests-cache_](https://requests-cache.readthedocs.io/en/stable/) package. Again by 
+default, this is sqlite database named _enmet_data.sqlite_ with _Cache-Control headers enabled_ and _expiration set 
+to 30 days_ (caching is controlled by _Cache-Control_ headers and if the headers cannot be determined, pages are 
+refreshed from Metal 
+Archives site 
+only if they have been kept in cache for at least 30 days).
 
 In order to control caching, you can both obtain the default cache object (for example to clean up old entries) and set your own cache. If you use your own cache, you need to set it each time you use _Enmet_, as there is no persistent configuration for it. The function to manipulate the cache is [`set_session_cache`](#functions).
 
@@ -293,5 +299,5 @@ To mitigate negative effects of these factors and to improve general responsiven
 # ToDo items
 
 - Add cardinality one properties (album.tracks, album.band etc) with corresponding exception system.
-- Add enums where relevant (band.status, genres - ?)
+- Add enums where relevant (genres, others?)
 - Make more data available
